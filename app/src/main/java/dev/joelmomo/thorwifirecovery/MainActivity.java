@@ -2,14 +2,20 @@ package dev.joelmomo.thorwifirecovery;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,8 +27,12 @@ public class MainActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
     private TextView statusDetail;
+    private TextView buildInfo;
     private Button diagnoseButton;
     private Button recoverButton;
+    private Button reportButton;
+    private Button projectButton;
+    private DiagnosticEngine.Snapshot lastSnapshot;
     private boolean diagnosisAllowed = true;
 
     @Override public void onCreate(Bundle state) {
@@ -50,8 +60,11 @@ public class MainActivity extends Activity {
         TextView title = text(getString(R.string.app_name), 30, Color.WHITE, true);
         root.addView(title);
         TextView subtitle = text(getString(R.string.subtitle), 15, Color.rgb(165,181,190), false);
-        subtitle.setPadding(0, dp(6), 0, dp(22));
+        subtitle.setPadding(0, dp(6), 0, dp(8));
         root.addView(subtitle);
+        buildInfo = text(getString(R.string.build_info, BuildConfig.VERSION_NAME, getString(R.string.unknown_value)), 12, Color.rgb(128,145,154), false);
+        buildInfo.setPadding(0, 0, 0, dp(18));
+        root.addView(buildInfo);
 
         LinearLayout statusCard = column();
         statusCard.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -68,8 +81,15 @@ public class MainActivity extends Activity {
         recoverButton.setEnabled(false);
         diagnoseButton.setOnClickListener(v -> runProbe(true, false));
         recoverButton.setOnClickListener(v -> confirmRecovery());
+        reportButton = button(getString(R.string.copy_report), Color.rgb(35,49,57), Color.WHITE);
+        projectButton = button(getString(R.string.open_project), Color.rgb(35,49,57), Color.WHITE);
+        reportButton.setEnabled(false);
+        reportButton.setOnClickListener(v -> copyDiagnosticReport());
+        projectButton.setOnClickListener(v -> openProject());
         root.addView(diagnoseButton, matchWrap(0, 0, 0, 12));
-        root.addView(recoverButton, matchWrap(0, 0, 0, 20));
+        root.addView(recoverButton, matchWrap(0, 0, 0, 12));
+        root.addView(reportButton, matchWrap(0, 0, 0, 12));
+        root.addView(projectButton, matchWrap(0, 0, 0, 20));
 
         TextView warning = text(getString(R.string.warning), 14, Color.rgb(222,228,231), false);
         warning.setPadding(dp(2), 0, dp(2), dp(18));
@@ -106,6 +126,8 @@ public class MainActivity extends Activity {
     }
 
     private void showProbe(DiagnosticEngine.DeviceInfo info) {
+        lastSnapshot = null;
+        updateBuildInfo(info);
         recoverButton.setEnabled(false);
         if (!DiagnosticEngine.isSupportedFirmware(info.firmware)) {
             diagnosisAllowed = false;
@@ -128,6 +150,8 @@ public class MainActivity extends Activity {
     }
 
     private void showDiagnosis(DiagnosticEngine.Snapshot snapshot, boolean postRecovery) {
+        lastSnapshot = snapshot;
+        updateBuildInfo(snapshot.device);
         if (postRecovery) {
             prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
             showPostRecovery(snapshot);
@@ -226,6 +250,7 @@ public class MainActivity extends Activity {
 
     private void showServiceError(Exception e, boolean postRecovery) {
         if (postRecovery) prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+        lastSnapshot = null;
         statusTitle.setText(postRecovery
                 ? R.string.status_recovery_unverified
                 : R.string.status_unavailable);
@@ -266,11 +291,40 @@ public class MainActivity extends Activity {
         return getSharedPreferences(PREFS, MODE_PRIVATE);
     }
 
+    private void updateBuildInfo(DiagnosticEngine.DeviceInfo info) {
+        String firmware = info == null || info.firmware == null || info.firmware.trim().isEmpty()
+                ? getString(R.string.unknown_value) : info.firmware.trim();
+        buildInfo.setText(getString(R.string.build_info, BuildConfig.VERSION_NAME, firmware));
+    }
+
     private void setBusy(boolean busy) {
         diagnoseButton.setEnabled(!busy && diagnosisAllowed);
         if (busy) recoverButton.setEnabled(false);
         diagnoseButton.setAlpha(diagnoseButton.isEnabled() ? 1f : 0.55f);
         recoverButton.setAlpha(recoverButton.isEnabled() ? 1f : 0.55f);
+        reportButton.setEnabled(!busy && lastSnapshot != null);
+        reportButton.setAlpha(reportButton.isEnabled() ? 1f : 0.55f);
+        projectButton.setEnabled(!busy);
+        projectButton.setAlpha(projectButton.isEnabled() ? 1f : 0.55f);
+    }
+
+    private void copyDiagnosticReport() {
+        if (lastSnapshot == null) {
+            Toast.makeText(this, R.string.report_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String report = DiagnosticReport.build(BuildConfig.VERSION_NAME, lastSnapshot);
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("Thor Wi-Fi diagnostic", report));
+        Toast.makeText(this, R.string.report_copied, Toast.LENGTH_SHORT).show();
+    }
+
+    private void openProject() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.project_url))));
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.project_unavailable, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String safeMessage(Exception e) {

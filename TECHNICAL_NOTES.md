@@ -80,6 +80,16 @@ A separate boot-time reproduction with `ScanningState`, no carrier, and no low-l
 
 The diagnosis engine currently has 13 local unit tests covering the supported build, healthy state, confirmed lockup paths, timeout/error handling, unsupported firmware, Wi-Fi disabled, missing `wlan0`, and ambiguous states.
 
+## Beta2 hardening and UX
+
+`v0.3.0-beta2` adds a sanitized diagnostic-report path, CI checks and UI/launcher polish without widening the recovery scope.
+
+The copied diagnostic report contains the app version, firmware, classification, Wi-Fi enabled state, `wlan0` presence, carrier state, scanner exit code/state and low-level AP count. It does not include network names, hardware addresses, IP addresses or Wi-Fi passwords, and nothing is uploaded automatically.
+
+The app now exposes the installed version and detected firmware in the UI, provides an external GitHub project link, and uses an adaptive launcher icon with an Android 13 monochrome resource. Opening the project delegates to the installed browser and does not require the app itself to request Internet permission.
+
+Local unit coverage is 14 tests: 13 diagnosis tests plus a report-privacy test. GitHub Actions repeats unit tests, lint and a debug build on pushes and pull requests, checks the built APK for `android.permission.INTERNET`, and rejects obvious sensitive Wi-Fi logging patterns in app source.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.

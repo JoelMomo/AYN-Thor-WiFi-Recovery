@@ -44,4 +44,12 @@
     <string name="run">Recover</string>
     <string name="service_error">Could not access AYN’s root service: %1$s</string>
     <string name="pending_state_error">Could not persist the recovery verification state, so recovery was not started.</string>
+    <string name="copy_report">Copy diagnostic report</string>
+    <string name="open_project">Open project on GitHub</string>
+    <string name="report_copied">Diagnostic report copied</string>
+    <string name="report_unavailable">Run Check scanner first</string>
+    <string name="project_unavailable">No browser is available</string>
+    <string name="project_url" translatable="false">https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery</string>
+    <string name="build_info">App %1$s · Firmware %2$s</string>
+    <string name="unknown_value">unknown</string>
 </resources>

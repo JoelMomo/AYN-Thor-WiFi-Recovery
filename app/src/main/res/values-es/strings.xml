@@ -45,4 +45,11 @@
     <string name="run">Recuperar</string>
     <string name="service_error">No se pudo acceder al servicio root de AYN: %1$s</string>
     <string name="pending_state_error">No se pudo guardar el estado para verificar la recuperación, así que no se inició.</string>
+    <string name="copy_report">Copiar informe de diagnóstico</string>
+    <string name="open_project">Abrir proyecto en GitHub</string>
+    <string name="report_copied">Informe de diagnóstico copiado</string>
+    <string name="report_unavailable">Primero pulsa Comprobar escáner</string>
+    <string name="project_unavailable">No hay ningún navegador disponible</string>
+    <string name="build_info">App %1$s · Firmware %2$s</string>
+    <string name="unknown_value">desconocido</string>
 </resources>
