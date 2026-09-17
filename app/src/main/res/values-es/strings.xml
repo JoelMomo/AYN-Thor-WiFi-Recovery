@@ -1,14 +1,14 @@
 <resources>
     <string name="app_name">Thor Wi-Fi Recovery</string>
     <string name="subtitle">Recuperación específica para el bloqueo de escaneo .377 de AYN Thor</string>
-    <string name="status_checking">Comprobando el servicio root de AYN…</string>
+    <string name="status_checking">Comprobando el estado del escáner Wi-Fi…</string>
     <string name="status_ready">Pila Wi-Fi accesible</string>
     <string name="status_unavailable">Servicio root de AYN no disponible</string>
     <string name="status_lockup">Bloqueo de escaneo conocido detectado</string>
     <string name="status_radio_empty">Fallo Wi-Fi distinto detectado</string>
     <string name="service_ready_detail">El servicio root de AYN está disponible. Comprueba el escaneo si Android no muestra redes.</string>
     <string name="connected_to">Conectado a %1$s</string>
-    <string name="diagnose">Comprobar escaneo</string>
+    <string name="diagnose">Comprobar escáner</string>
     <string name="recover">Recuperar Wi-Fi</string>
     <string name="warning">No se borran redes ni contraseñas. La recuperación reinicia el runtime/framework de Android y cierra las apps abiertas.</string>
     <string name="about">Workaround experimental de la comunidad · Probado en AYN Thor con firmware .377</string>
@@ -17,11 +17,8 @@
     <string name="cancel">Cancelar</string>
     <string name="run">Recuperar</string>
     <string name="lockup_detail">Android encontró 0 puntos de acceso, pero el escaneo de bajo nivel de la radio encontró %1$d. Coincide con el bloqueo .377 validado; la recuperación está disponible.</string>
-    <string name="radio_empty_detail">Android y el escaneo de bajo nivel de la radio devolvieron 0 puntos de acceso. No coincide con el bloqueo validado solo del framework, así que la recuperación queda desactivada.</string>
     <string name="service_error">No se pudo acceder al servicio root de AYN: %1$s</string>
-    <plurals name="scan_ok">
-        <item quantity="one">Escaneo completado: %1$d punto de acceso encontrado.</item>
-        <item quantity="other">Escaneo completado: %1$d puntos de acceso encontrados.</item>
-        <item quantity="many">Escaneo completado: %1$d puntos de acceso encontrados.</item>
-    </plurals>
+    <string name="scanner_idle_detail">El escáner Wi-Fi de Android está en IdleState. No se detecta actualmente un bloqueo de escaneo.</string>
+    <string name="lockup_state_detail">WifiSingleScanStateMachine está atascado en ScanningState mientras la radio/enlace Wi-Fi sigue activo. La recuperación está disponible.</string>
+    <string name="scanner_unknown_detail">No se ha podido confirmar el bloqueo de escaneo validado. La recuperación permanece desactivada.</string>
 </resources>

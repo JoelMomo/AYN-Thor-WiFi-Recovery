@@ -38,17 +38,24 @@ The evidence points to an intermittent lockup in the Android Wi-Fi scanning/fram
 
 The failure was also reproduced with Wi-Fi 7 enabled and recovered without changing router settings, so the script is intentionally router-independent.
 
-## Additional failure signature observed
+## Additional validation
 
-A later test produced a different state: both `cmd wifi list-scan-results` and a root `wpa_cli -i wlan0 scan_results` returned zero APs. Restarting `wpa_supplicant`, `wificond`, and `vendor.wifi_hal_legacy` individually did not restore scan results.
+A later physical test refined the app diagnostic. While Wi-Fi remained associated, `WifiSingleScanStateMachine` was observed with its latest transition ending in `dest=ScanningState`; `dumpsys wifiscanner` also timed out instead of completing normally. The app detected this state together with an active `wlan0` carrier and enabled recovery.
 
-The Android app therefore treats this as a different failure signature and does not enable the validated zygote recovery path for it.
+After triggering **Recover Wi-Fi** from the app, `setprop ctl.restart zygote` restarted the Android framework. The Thor re-associated automatically. A subsequent read-only app check reported the scanner in `IdleState` and disabled the recovery button.
+
+The same recovery cycle also produced a successful scanner completion with 26 results and a normal `ScanningState -> IdleState` transition before the intermittent bug was reproduced again by a later framework scan. This supports the workaround behavior but does not establish a permanent firmware fix.
 
 ## App diagnostic rule
 
-- Android APs > 0: healthy scan path.
-- Android APs = 0 and low-level radio APs > 0: validated framework-only lockup; recovery may be offered.
-- Android APs = 0 and low-level radio APs = 0: different/undetermined failure; recovery remains disabled.
+The current alpha does not trigger an Android framework scan merely to diagnose the problem.
+
+- Latest `WifiSingleScanStateMachine` transition ends in `IdleState`: scanner is responsive; recovery stays disabled.
+- Latest transition ends in `ScanningState` and `wlan0` carrier is active: validated lockup signature; recovery is enabled.
+- `ScanningState` with no carrier: the app performs a low-level `wpa_cli` scan; if the radio still sees APs, recovery may be enabled.
+- Missing/ambiguous state with no independent evidence that the radio path is alive: recovery stays disabled.
+
+The scanner query is bounded with `timeout` so a hung `wifiscanner` service cannot block the app indefinitely.
 
 ## Limitations
 

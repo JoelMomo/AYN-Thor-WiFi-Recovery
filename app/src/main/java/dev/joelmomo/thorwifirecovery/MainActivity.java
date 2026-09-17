@@ -82,13 +82,17 @@ public class MainActivity extends Activity {
         statusDetail.setText("");
         worker.execute(() -> {
             try {
-                String output = forced ? ThorRootBridge.forceScan() : ThorRootBridge.probe();
-                int androidAps = forced ? countAccessPoints(section(output, "__ANDROID_RESULTS__", "__RADIO_RESULTS__")) : countAccessPoints(output);
+                String output = forced ? ThorRootBridge.diagnoseScanner() : ThorRootBridge.probe();
                 int radioAps = forced ? countAccessPoints(section(output, "__RADIO_RESULTS__", null)) : -1;
-                String ssid = connectedSsid(output);
+                boolean carrierUp = forced && "1".equals(section(output, "__CARRIER__", "__SCANNER_STATE__").trim());
+                String scannerLine = forced ? section(output, "__SCANNER_STATE__", "__RADIO_RESULTS__").trim() : "";
+                boolean scannerIdle = scannerLine.contains("dest=IdleState");
+                boolean scannerScanning = scannerLine.contains("dest=ScanningState");
+                String ssid = forced ? null : connectedSsid(output);
                 android.util.Log.i("ThorWiFiRecovery", "probe forced=" + forced
-                        + " androidAps=" + androidAps + " radioAps=" + radioAps);
-                runOnUiThread(() -> showProbeResult(forced, androidAps, radioAps, ssid));
+                        + " scannerIdle=" + scannerIdle + " scannerScanning=" + scannerScanning
+                        + " radioAps=" + radioAps + " carrierUp=" + carrierUp);
+                runOnUiThread(() -> showProbeResult(forced, scannerIdle, scannerScanning, radioAps, ssid, carrierUp));
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     statusTitle.setText(R.string.status_unavailable);
@@ -100,22 +104,24 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void showProbeResult(boolean forced, int androidAps, int radioAps, String ssid) {
+    private void showProbeResult(boolean forced, boolean scannerIdle, boolean scannerScanning, int radioAps, String ssid, boolean carrierUp) {
         if (!forced) {
             statusTitle.setText(R.string.status_ready);
             statusDetail.setText(ssid != null ? getString(R.string.connected_to, ssid) : getString(R.string.service_ready_detail));
             recoverButton.setEnabled(false);
-        } else if (androidAps > 0) {
+        } else if (scannerIdle) {
             statusTitle.setText(R.string.status_ready);
-            statusDetail.setText(getResources().getQuantityString(R.plurals.scan_ok, androidAps, androidAps));
+            statusDetail.setText(R.string.scanner_idle_detail);
             recoverButton.setEnabled(false);
-        } else if (radioAps > 0) {
+        } else if (scannerScanning && (carrierUp || radioAps > 0)) {
             statusTitle.setText(R.string.status_lockup);
-            statusDetail.setText(getString(R.string.lockup_detail, radioAps));
+            statusDetail.setText(carrierUp
+                    ? getString(R.string.lockup_state_detail)
+                    : getString(R.string.lockup_detail, radioAps));
             recoverButton.setEnabled(true);
         } else {
             statusTitle.setText(R.string.status_radio_empty);
-            statusDetail.setText(R.string.radio_empty_detail);
+            statusDetail.setText(R.string.scanner_unknown_detail);
             recoverButton.setEnabled(false);
         }
         setBusy(false);

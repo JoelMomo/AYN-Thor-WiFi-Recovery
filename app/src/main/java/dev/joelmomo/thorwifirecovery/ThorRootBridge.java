@@ -10,16 +10,17 @@ final class ThorRootBridge {
         return execute("cmd wifi status");
     }
 
-    static String forceScan() throws Exception {
-        execute("cmd wifi start-scan");
-        Thread.sleep(6000);
-        String androidResults = execute("cmd wifi list-scan-results");
-
-        execute("/vendor/bin/wpa_cli -i wlan0 scan");
-        Thread.sleep(4000);
-        String radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
-
-        return "__ANDROID_RESULTS__\n" + androidResults
+    static String diagnoseScanner() throws Exception {
+        String carrier = execute("cat /sys/class/net/wlan0/carrier 2>/dev/null");
+        String scannerState = execute("timeout 5 dumpsys wifiscanner | sed -n '/WifiSingleScanStateMachine:/,/^$/p' | grep 'dest=' | tail -n 1");
+        String radioResults = "";
+        if (scannerState.contains("dest=ScanningState") && !"1".equals(carrier.trim())) {
+            execute("/vendor/bin/wpa_cli -i wlan0 scan");
+            Thread.sleep(4000);
+            radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+        }
+        return "__CARRIER__\n" + carrier
+                + "\n__SCANNER_STATE__\n" + scannerState
                 + "\n__RADIO_RESULTS__\n" + radioResults;
     }
 

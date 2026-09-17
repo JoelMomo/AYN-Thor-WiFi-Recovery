@@ -1,14 +1,14 @@
 <resources>
     <string name="app_name">Thor Wi-Fi Recovery</string>
     <string name="subtitle">Targeted recovery for the AYN Thor .377 scan lockup</string>
-    <string name="status_checking">Checking AYN root service…</string>
+    <string name="status_checking">Checking Wi-Fi scanner state…</string>
     <string name="status_ready">Wi-Fi stack reachable</string>
     <string name="status_unavailable">AYN root service unavailable</string>
     <string name="status_lockup">Known scan lockup detected</string>
     <string name="status_radio_empty">Different Wi-Fi failure detected</string>
     <string name="service_ready_detail">AYN root service is available. Run a scan check if Android is showing no networks.</string>
     <string name="connected_to">Connected to %1$s</string>
-    <string name="diagnose">Run scan check</string>
+    <string name="diagnose">Check scanner</string>
     <string name="recover">Recover Wi-Fi</string>
     <string name="warning">No networks or passwords are deleted. Recovery restarts Android’s runtime/framework and closes open apps.</string>
     <string name="about">Experimental community workaround · Tested on AYN Thor firmware .377</string>
@@ -17,10 +17,8 @@
     <string name="cancel">Cancel</string>
     <string name="run">Recover</string>
     <string name="lockup_detail">Android found 0 access points while the low-level radio scan found %1$d. This matches the validated .377 lockup; recovery is available.</string>
-    <string name="radio_empty_detail">Android and the low-level radio scan both returned 0 access points. This does not match the validated framework-only lockup, so recovery is disabled.</string>
     <string name="service_error">Could not access AYN’s root service: %1$s</string>
-    <plurals name="scan_ok">
-        <item quantity="one">Scan completed: %1$d access point found.</item>
-        <item quantity="other">Scan completed: %1$d access points found.</item>
-    </plurals>
+    <string name="scanner_idle_detail">Android Wi-Fi scanner is in IdleState. No scan lockup is currently detected.</string>
+    <string name="lockup_state_detail">WifiSingleScanStateMachine is stuck in ScanningState while the Wi-Fi radio/link is active. Recovery is available.</string>
+    <string name="scanner_unknown_detail">The validated scanner lockup could not be confirmed. Recovery remains disabled.</string>
 </resources>
