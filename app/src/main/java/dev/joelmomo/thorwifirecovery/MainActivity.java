@@ -40,8 +40,6 @@ public class MainActivity extends Activity {
     private static final String PREFS = "recovery_state";
     private static final String KEY_RECOVERY_PENDING = "recovery_pending";
     private static final String KEY_LIGHT_THEME = "light_theme";
-    private static final String KEY_THEME_TRANSITION = "theme_transition";
-    private static Bitmap themeSnapshot;
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
@@ -52,6 +50,8 @@ public class MainActivity extends Activity {
     private TextView themeToggle;
     private TextView buildInfo;
     private LinearLayout statusCard;
+    private LinearLayout statusCenter;
+    private LinearLayout recoveryCenter;
     private View statusRail;
     private LinearLayout detailsBody;
     private LinearLayout deviceSummaryBody;
@@ -67,7 +67,9 @@ public class MainActivity extends Activity {
     private Button reportButton;
     private Button projectButton;
     private DiagnosticEngine.Snapshot lastSnapshot;
+    private DiagnosticEngine.DeviceInfo lastDeviceInfo;
     private boolean diagnosisAllowed = true;
+    private boolean detailsExpanded;
     private boolean isLightTheme;
     private int colorBg, colorCard, colorCardSoft, colorOutline, colorAccent;
     private int colorTextPrimary, colorTextSecondary, colorTextMuted, colorButtonText;
@@ -81,8 +83,6 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         isLightTheme = prefs().getBoolean(KEY_LIGHT_THEME, false);
-        boolean animateTheme = prefs().getBoolean(KEY_THEME_TRANSITION, false);
-        if (animateTheme) prefs().edit().remove(KEY_THEME_TRANSITION).apply();
         applyPalette();
         View decor = getWindow().getDecorView();
         decor.setAlpha(1f);
@@ -92,7 +92,6 @@ public class MainActivity extends Activity {
                 ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 : 0);
         buildUi();
-        if (animateTheme) runThemeCrossfade(decor);
         startAmbientAnimation();
         boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
         runProbe(pending, pending);
@@ -171,7 +170,8 @@ public class MainActivity extends Activity {
         statusInfoButton.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(statusDetail, statusInfoButton); });
         statusHeader.addView(statusInfoButton);
         statusContent.addView(statusHeader);
-        LinearLayout statusCenter = new LinearLayout(this);
+        FrameLayout statusStage = new FrameLayout(this);
+        statusCenter = new LinearLayout(this);
         statusCenter.setGravity(Gravity.CENTER_VERTICAL);
         statusTitle = text(getString(R.string.status_checking), 23, colorAccent, true);
         statusTitle.setLetterSpacing(-0.01f);
@@ -181,11 +181,17 @@ public class MainActivity extends Activity {
         statusSpinner.getIndeterminateDrawable().setTint(colorAccent);
         statusSpinner.setVisibility(View.GONE);
         statusCenter.addView(statusSpinner, spinnerParams());
-        statusContent.addView(statusCenter, new LinearLayout.LayoutParams(-1, 0, 1f));
+        statusStage.addView(statusCenter,
+                new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER_VERTICAL));
         statusDetail = text("", 13, colorDetailText, false);
-        statusDetail.setPadding(0, dp(8), 0, 0);
-        statusDetail.setVisibility(View.GONE);
-        statusContent.addView(statusDetail);
+        statusDetail.setPadding(0, dp(6), 0, 0);
+        statusDetail.setAlpha(0f);
+        statusDetail.setVisibility(View.INVISIBLE);
+        FrameLayout.LayoutParams statusDetailParams =
+                new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        statusDetailParams.setMargins(0, 0, 0, dp(1));
+        statusStage.addView(statusDetail, statusDetailParams);
+        statusContent.addView(statusStage, new LinearLayout.LayoutParams(-1, 0, 1f));
         statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -1, 1f));
 
         LinearLayout recoveryCard = column();
@@ -198,17 +204,22 @@ public class MainActivity extends Activity {
         recoveryInfo.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(recoveryHint, recoveryInfo); });
         recoveryHeader.addView(recoveryInfo);
         recoveryCard.addView(recoveryHeader);
-        recoveryHint = text(getString(R.string.recovery_hint), 13, colorTextSecondary, false);
-        recoveryHint.setPadding(0, dp(8), 0, dp(8));
-        recoveryHint.setVisibility(View.GONE);
-        recoveryCard.addView(recoveryHint);
+        FrameLayout recoveryStage = new FrameLayout(this);
+        recoveryHint = text(getString(R.string.recovery_hint), 12, colorTextSecondary, false);
+        recoveryHint.setPadding(0, dp(5), 0, 0);
+        recoveryHint.setAlpha(0f);
+        recoveryHint.setVisibility(View.INVISIBLE);
+        recoveryStage.addView(recoveryHint,
+                new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
         recoverButton = button(getString(R.string.recover), colorAccent, colorButtonText);
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
-        LinearLayout recoveryCenter = new LinearLayout(this);
+        recoveryCenter = new LinearLayout(this);
         recoveryCenter.setGravity(Gravity.CENTER);
         recoveryCenter.addView(recoverButton, new LinearLayout.LayoutParams(-1, -2));
-        recoveryCard.addView(recoveryCenter, new LinearLayout.LayoutParams(-1, 0, 1f));
+        recoveryStage.addView(recoveryCenter,
+                new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+        recoveryCard.addView(recoveryStage, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         LinearLayout toolsCard = column();
         toolsCard.setPadding(dp(16), dp(14), dp(16), dp(15));
@@ -270,6 +281,11 @@ public class MainActivity extends Activity {
         detailsBody.addView(metricTile(getString(R.string.detail_support), detailSupport),
                 deviceTileParams(dp(4), 0));
         deviceContent.addView(detailsBody, new FrameLayout.LayoutParams(-1, -1));
+        if (detailsExpanded) {
+            deviceSummaryBody.setVisibility(View.GONE);
+            detailsBody.setVisibility(View.VISIBLE);
+            detailsToggle.setText(R.string.details_hide_short);
+        }
         projectButton = null;
 
         if (wide) {
@@ -342,6 +358,7 @@ public class MainActivity extends Activity {
     }
 
     private void showProbe(DiagnosticEngine.DeviceInfo info) {
+        lastDeviceInfo = info;
         lastSnapshot = null;
         updateBuildInfo(info);
         updateDetails(info, null);
@@ -372,6 +389,7 @@ public class MainActivity extends Activity {
 
     private void showDiagnosis(DiagnosticEngine.Snapshot snapshot, boolean postRecovery) {
         lastSnapshot = snapshot;
+        lastDeviceInfo = snapshot.device;
         updateBuildInfo(snapshot.device);
         updateDetails(snapshot.device, snapshot);
         if (postRecovery) {
@@ -565,7 +583,14 @@ public class MainActivity extends Activity {
             statusInfoButton.animate().alpha(1f).translationY(0f).setDuration(230)
                     .setInterpolator(new PathInterpolator(0.18f, 0f, 0.1f, 1f)).start();
         }
-        if (busy) statusDetail.setVisibility(View.GONE);
+        if (busy) {
+            statusDetail.animate().cancel();
+            statusDetail.setAlpha(0f);
+            statusDetail.setTranslationY(0f);
+            statusDetail.setVisibility(View.INVISIBLE);
+            statusCenter.animate().cancel();
+            statusCenter.setTranslationY(0f);
+        }
     }
 
     private void copyDiagnosticReport() {
@@ -598,61 +623,102 @@ public class MainActivity extends Activity {
     private void toggleTheme() {
         final boolean nextLight = !isLightTheme;
         themeToggle.setEnabled(false);
-        View decor = getWindow().getDecorView();
-        if (decor.getWidth() > 0 && decor.getHeight() > 0) {
+        View decorView = getWindow().getDecorView();
+        Bitmap oldFrame = null;
+        if (decorView.getWidth() > 0 && decorView.getHeight() > 0) {
             try {
-                Bitmap bitmap = Bitmap.createBitmap(decor.getWidth(), decor.getHeight(), Bitmap.Config.ARGB_8888);
-                decor.draw(new Canvas(bitmap));
-                themeSnapshot = bitmap;
+                oldFrame = Bitmap.createBitmap(
+                        decorView.getWidth(), decorView.getHeight(), Bitmap.Config.ARGB_8888);
+                decorView.draw(new Canvas(oldFrame));
             } catch (Exception ignored) {
-                themeSnapshot = null;
+                oldFrame = null;
             }
         }
-        prefs().edit().putBoolean(KEY_LIGHT_THEME, nextLight)
-                .putBoolean(KEY_THEME_TRANSITION, true).apply();
-        recreate();
+
+        final int oldBar = getWindow().getStatusBarColor();
+        final Bitmap overlayBitmap = oldFrame;
+        isLightTheme = nextLight;
+        prefs().edit().putBoolean(KEY_LIGHT_THEME, nextLight).apply();
+        if (ambientAnimator != null) ambientAnimator.cancel();
+        if (statusAnimator != null) statusAnimator.cancel();
+        applyPalette();
+        buildUi();
+
+        if (lastSnapshot != null) {
+            showDiagnosis(lastSnapshot, false);
+        } else if (lastDeviceInfo != null) {
+            showProbe(lastDeviceInfo);
+        }
+        startAmbientAnimation();
+
+        getWindow().getDecorView().setSystemUiVisibility(isLightTheme
+                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                : 0);
+        animateSystemBars(oldBar, colorBg);
+
+        if (overlayBitmap == null) return;
+        ViewGroup decor = (ViewGroup) getWindow().getDecorView();
+        ImageView overlay = new ImageView(this);
+        overlay.setScaleType(ImageView.ScaleType.FIT_XY);
+        overlay.setImageBitmap(overlayBitmap);
+        decor.addView(overlay, new ViewGroup.LayoutParams(-1, -1));
+        overlay.bringToFront();
+        overlay.animate().alpha(0f).setDuration(560)
+                .setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f))
+                .withEndAction(() -> {
+                    decor.removeView(overlay);
+                    overlayBitmap.recycle();
+                }).start();
     }
 
-    private void runThemeCrossfade(View decorView) {
-        decorView.post(() -> {
-            if (themeSnapshot == null) return;
-            ViewGroup decor = (ViewGroup) decorView;
-            ImageView overlay = new ImageView(this);
-            overlay.setScaleType(ImageView.ScaleType.FIT_XY);
-            overlay.setImageBitmap(themeSnapshot);
-            decor.addView(overlay, new ViewGroup.LayoutParams(-1, -1));
-            overlay.animate().alpha(0f).scaleX(1.015f).scaleY(1.015f).setDuration(320)
-                    .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
-                    .withEndAction(() -> {
-                        decor.removeView(overlay);
-                        if (themeSnapshot != null) themeSnapshot.recycle();
-                        themeSnapshot = null;
-                    }).start();
+    private void animateSystemBars(int fromColor, int toColor) {
+        ValueAnimator bars = ValueAnimator.ofObject(new ArgbEvaluator(), fromColor, toColor);
+        bars.setDuration(560);
+        bars.setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f));
+        bars.addUpdateListener(animation -> {
+            int color = (int) animation.getAnimatedValue();
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
         });
-    }
-
-    private int themeBackground(boolean light) {
-        return light ? Color.rgb(246, 242, 232) : Color.rgb(9, 13, 16);
+        bars.start();
     }
 
     private void toggleInfo(View body, TextView button) {
         boolean show = body.getVisibility() != View.VISIBLE;
-        button.animate().rotationBy(show ? 10f : -10f).setDuration(180).start();
+        button.animate().cancel();
+        button.animate().rotation(show ? 8f : 0f).scaleX(show ? 1.04f : 1f)
+                .scaleY(show ? 1.04f : 1f).setDuration(220)
+                .setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f)).start();
+
+        View movingContent = body == statusDetail ? statusCenter
+                : body == recoveryHint ? recoveryCenter : null;
+        float targetShift = body == statusDetail ? -dp(24)
+                : body == recoveryHint ? dp(18) : 0f;
+
+        body.animate().cancel();
         if (show) {
             body.setAlpha(0f);
-            body.setTranslationY(-dp(8));
-            body.setScaleY(0.94f);
+            body.setTranslationY(dp(8));
             body.setVisibility(View.VISIBLE);
-            body.animate().alpha(1f).translationY(0f).scaleY(1f).setDuration(240)
-                    .setInterpolator(new PathInterpolator(0.18f, 0f, 0.1f, 1f)).start();
+            body.animate().alpha(1f).translationY(0f).setDuration(320)
+                    .setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f)).start();
+            if (movingContent != null) {
+                movingContent.animate().cancel();
+                movingContent.animate().translationY(targetShift).setDuration(360)
+                        .setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f)).start();
+            }
         } else {
-            body.animate().alpha(0f).translationY(-dp(6)).scaleY(0.96f).setDuration(180)
+            body.animate().alpha(0f).translationY(dp(6)).setDuration(240)
+                    .setInterpolator(new PathInterpolator(0.3f, 0f, 0.2f, 1f))
                     .withEndAction(() -> {
-                        body.setVisibility(View.GONE);
-                        body.setAlpha(1f);
+                        body.setVisibility(View.INVISIBLE);
                         body.setTranslationY(0f);
-                        body.setScaleY(1f);
                     }).start();
+            if (movingContent != null) {
+                movingContent.animate().cancel();
+                movingContent.animate().translationY(0f).setDuration(340)
+                        .setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f)).start();
+            }
         }
     }
     private void interactionFeedback(View view) {
@@ -667,7 +733,7 @@ public class MainActivity extends Activity {
     private void startAmbientAnimation() {
         if (statusDrawable == null) return;
         ambientAnimator = ValueAnimator.ofFloat(0f, 1f);
-        ambientAnimator.setDuration(9000);
+        ambientAnimator.setDuration(12000);
         ambientAnimator.setRepeatCount(ValueAnimator.INFINITE);
         ambientAnimator.setRepeatMode(ValueAnimator.RESTART);
         ambientAnimator.setInterpolator(null);
@@ -694,7 +760,7 @@ public class MainActivity extends Activity {
         final ArgbEvaluator evaluator = new ArgbEvaluator();
         statusDrawable.beginTransition(startFill, targetFill);
         statusAnimator = ValueAnimator.ofFloat(0f, 1f);
-        statusAnimator.setDuration(1180);
+        statusAnimator.setDuration(1450);
         statusAnimator.setInterpolator(new PathInterpolator(0.18f, 0f, 0.12f, 1f));
         statusAnimator.addUpdateListener(animation -> {
             float f = (float) animation.getAnimatedValue();
@@ -883,6 +949,7 @@ public class MainActivity extends Activity {
                 }).start();
         incoming.animate().alpha(1f).translationY(0f).setStartDelay(60).setDuration(210)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f)).start();
+        detailsExpanded = show;
         detailsToggle.setText(show ? R.string.details_hide_short : R.string.details_show_short);
     }
 
@@ -918,12 +985,16 @@ public class MainActivity extends Activity {
     private final class LiquidStatusDrawable extends Drawable {
         private final Paint basePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint liquidPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint softWavePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint ambientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint ambientPaint2 = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
         private final Path clipPath = new Path();
         private final Path liquidPath = new Path();
+        private final Path secondaryPath = new Path();
         private final Path ambientPath = new Path();
+        private final Path ambientPath2 = new Path();
         private int baseColor;
         private int targetColor;
         private final int outlineColor;
@@ -966,68 +1037,94 @@ public class MainActivity extends Activity {
             basePaint.setColor(baseColor);
             canvas.drawRoundRect(rect, radius, radius, basePaint);
 
-            if (progress > 0.01f && progress < 0.999f) {
-                clipPath.reset();
-                clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW);
-                canvas.save();
-                canvas.clipPath(clipPath);
-                liquidPaint.setColor(targetColor);
-                float boundary = rect.left + rect.width() * progress;
-                float amp = dp(9) * (0.72f + 0.28f * (1f - progress));
-                float phase = progress * (float) Math.PI * 2.15f;
-                liquidPath.reset();
-                liquidPath.moveTo(rect.left, rect.top);
-                liquidPath.lineTo(boundary + (float) Math.sin(phase) * amp, rect.top);
-                final int segments = 22;
-                for (int i = 1; i <= segments; i++) {
-                    float y = rect.top + rect.height() * i / segments;
-                    float x = boundary + (float) Math.sin(phase + i * 0.72f) * amp;
-                    liquidPath.lineTo(x, y);
-                }
-                liquidPath.lineTo(rect.left, rect.bottom);
-                liquidPath.close();
-                canvas.drawPath(liquidPath, liquidPaint);
-                canvas.restore();
-            } else if (progress >= 0.999f) {
-                basePaint.setColor(targetColor);
-                canvas.drawRoundRect(rect, radius, radius, basePaint);
-            }
-
             clipPath.reset();
             clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW);
             canvas.save();
             canvas.clipPath(clipPath);
-            ambientPaint.setColor(isLightTheme ? Color.WHITE : colorAccent);
-            ambientPaint.setAlpha(isLightTheme ? 18 : 13);
-            float center = rect.left + rect.width() * (-0.18f + ambientPhase * 1.36f);
-            float halfBand = rect.width() * 0.18f;
-            ambientPath.reset();
-            ambientPath.moveTo(center - halfBand, rect.top);
-            final int ambientSegments = 18;
-            for (int i = 0; i <= ambientSegments; i++) {
-                float y = rect.top + rect.height() * i / ambientSegments;
-                float wobble = (float) Math.sin(ambientPhase * Math.PI * 2f + i * 0.62f) * dp(10);
-                ambientPath.lineTo(center + halfBand + wobble, y);
+
+            if (progress > 0.001f && progress < 0.999f) {
+                float phase = ambientPhase * (float) Math.PI * 2f
+                        + progress * (float) Math.PI * 1.6f;
+                float amp = dp(8.5f);
+                float level = rect.bottom + amp
+                        - progress * (rect.height() + amp * 2f);
+
+                liquidPaint.setColor(targetColor);
+                buildHorizontalWave(liquidPath, level, amp, phase, 1.30f);
+                canvas.drawPath(liquidPath, liquidPaint);
+
+                int softColor = blendColors(targetColor,
+                        isLightTheme ? Color.WHITE : colorAccent, 0.20f);
+                softWavePaint.setColor(softColor);
+                softWavePaint.setAlpha(isLightTheme ? 42 : 28);
+                buildHorizontalWave(secondaryPath, level + dp(5),
+                        amp * 0.72f, phase + 1.35f, 1.55f);
+                canvas.drawPath(secondaryPath, softWavePaint);
+            } else if (progress >= 0.999f) {
+                basePaint.setColor(targetColor);
+                canvas.drawRoundRect(rect, radius, radius, basePaint);
+                drawAmbientWaves(canvas);
             }
-            ambientPath.lineTo(center - halfBand, rect.bottom);
-            ambientPath.close();
-            canvas.drawPath(ambientPath, ambientPaint);
+
             canvas.restore();
             canvas.drawRoundRect(rect, radius, radius, strokePaint);
+        }
+
+        private void drawAmbientWaves(Canvas canvas) {
+            float phase = ambientPhase * (float) Math.PI * 2f;
+            float drift = (float) Math.sin(phase * 0.5f) * dp(2.5f);
+            float level = rect.centerY() + dp(14) + drift;
+
+            ambientPaint.setColor(isLightTheme ? Color.WHITE : colorAccent);
+            ambientPaint.setAlpha(isLightTheme ? 18 : 13);
+            buildHorizontalWave(ambientPath, level, dp(5.5f),
+                    phase, 1.15f);
+            canvas.drawPath(ambientPath, ambientPaint);
+
+            int secondColor = isLightTheme
+                    ? blendColors(targetColor, colorAccent, 0.22f)
+                    : Color.BLACK;
+            ambientPaint2.setColor(secondColor);
+            ambientPaint2.setAlpha(isLightTheme ? 10 : 12);
+            buildHorizontalWave(ambientPath2, level + dp(13),
+                    dp(4.2f), -phase * 0.82f + 1.8f, 1.45f);
+            canvas.drawPath(ambientPath2, ambientPaint2);
+        }
+
+        private void buildHorizontalWave(Path path, float level, float amplitude,
+                                         float phase, float cycles) {
+            path.reset();
+            final int segments = 48;
+            float y0 = level + (float) Math.sin(phase) * amplitude;
+            path.moveTo(rect.left, y0);
+            for (int i = 1; i <= segments; i++) {
+                float fraction = i / (float) segments;
+                float x = rect.left + rect.width() * fraction;
+                float angle = phase + fraction * (float) Math.PI * 2f * cycles;
+                float y = level + (float) Math.sin(angle) * amplitude;
+                path.lineTo(x, y);
+            }
+            path.lineTo(rect.right, rect.bottom + dp(2));
+            path.lineTo(rect.left, rect.bottom + dp(2));
+            path.close();
         }
 
         @Override public void setAlpha(int alpha) {
             basePaint.setAlpha(alpha);
             liquidPaint.setAlpha(alpha);
-            strokePaint.setAlpha(alpha);
+            softWavePaint.setAlpha(alpha);
             ambientPaint.setAlpha(alpha);
+            ambientPaint2.setAlpha(alpha);
+            strokePaint.setAlpha(alpha);
         }
 
         @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) {
             basePaint.setColorFilter(colorFilter);
             liquidPaint.setColorFilter(colorFilter);
-            strokePaint.setColorFilter(colorFilter);
+            softWavePaint.setColorFilter(colorFilter);
             ambientPaint.setColorFilter(colorFilter);
+            ambientPaint2.setColorFilter(colorFilter);
+            strokePaint.setColorFilter(colorFilter);
         }
 
         @Override public int getOpacity() {

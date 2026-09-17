@@ -57,7 +57,7 @@
     <string name="section_status">Status</string>
     <string name="section_recovery">Recovery</string>
     <string name="section_tools">Tools</string>
-    <string name="recovery_hint">Available when the .377 scanner lockup is confirmed or remains stuck across checks. Restarting Android’s framework closes open apps.</string>
+    <string name="recovery_hint">Restarts Android’s framework and closes open apps. Save anything open before running it.</string>
     <string name="chip_validated">AYN Thor · .377</string>
     <string name="chip_offline">Local · no Internet</string>
     <string name="details_show">Device details  ›</string>

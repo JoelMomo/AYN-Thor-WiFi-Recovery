@@ -57,7 +57,7 @@
     <string name="section_status">Estado</string>
     <string name="section_recovery">Recuperación</string>
     <string name="section_tools">Herramientas</string>
-    <string name="recovery_hint">Disponible si el bloqueo de .377 se confirma o sigue atascado entre comprobaciones. Reiniciar el framework de Android cierra las apps abiertas.</string>
+    <string name="recovery_hint">Reinicia el framework de Android y cierra las apps abiertas. Guarda antes lo que tengas abierto.</string>
     <string name="chip_validated">AYN Thor · .377</string>
     <string name="chip_offline">Local · sin Internet</string>
     <string name="details_show">Detalles del dispositivo  ›</string>
