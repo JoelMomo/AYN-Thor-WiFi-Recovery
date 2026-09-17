@@ -54,8 +54,8 @@ public class DiagnosticEngineTest {
                 snapshot(true, true, false, 0, "dest=ScanningState", "").diagnosis());
     }
 
-    @Test public void unknownScannerStateFailsClosed() {
-        assertEquals(DiagnosticEngine.Diagnosis.SCANNER_UNKNOWN,
+    @Test public void successfulButUnparseableScannerOnValidatedBuildIsRecoverable() {
+        assertEquals(DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE,
                 snapshot(true, true, false, 0, "", "").diagnosis());
     }
 

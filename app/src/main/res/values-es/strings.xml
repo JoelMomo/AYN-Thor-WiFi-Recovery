@@ -32,7 +32,7 @@
     </plurals>
     <string name="scanner_timeout_detail">wifiscanner no terminó en 5 segundos y no hay evidencia independiente de radio que confirme el bloqueo conocido. La recuperación queda desactivada.</string>
     <string name="scanner_error_detail">El diagnóstico de wifiscanner devolvió el código %1$d. La recuperación queda desactivada.</string>
-    <string name="lockup_probable_detail">ScanningState siguió atascado tras una segunda comprobación en el firmware .377 validado. No hay enlace activo ni puntos de acceso visibles a bajo nivel, algo que también puede ocurrir cuando el propio escaneo está bloqueado. Puedes intentar la recuperación; guarda antes lo que tengas abierto.</string>
+    <string name="lockup_probable_detail">En la build .377 validada, el escáner permanece atascado o no devuelve un estado utilizable. Puedes intentar la recuperación; guarda antes lo que tengas abierto.</string>
     <string name="scanner_unknown_detail">No se pudo clasificar el estado del escáner con seguridad. La recuperación queda desactivada.</string>
     <string name="recovery_success_detail">El escáner volvió a IdleState tras reiniciar el framework. La recuperación queda verificada.</string>
     <string name="recovery_failed_detail">La firma del bloqueo validado sigue presente tras la recuperación. Puedes reintentarlo una vez después de guardar cualquier trabajo abierto.</string>
@@ -67,6 +67,7 @@
     <string name="detail_scanner">Escáner</string>
     <string name="detail_carrier">Enlace Wi-Fi</string>
     <string name="detail_radio_aps">AP detectados por radio</string>
+    <string name="detail_radio_aps_short">AP radio</string>
     <string name="detail_not_checked">Sin comprobar</string>
     <string name="detail_supported">Validado</string>
     <string name="detail_not_supported">No validado</string>
@@ -81,4 +82,7 @@
     <string name="details_show_short">Ver detalles</string>
     <string name="details_hide_short">Ocultar detalles</string>
     <string name="copy_report_short">Copiar informe</string>
+    <string name="detail_android">Android</string>
+    <string name="detail_model">Modelo</string>
+    <string name="detail_wifi_interface">Interfaz Wi-Fi</string>
 </resources>

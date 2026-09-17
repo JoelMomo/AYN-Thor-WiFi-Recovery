@@ -31,7 +31,7 @@
     </plurals>
     <string name="scanner_timeout_detail">wifiscanner did not complete within 5 seconds and no independent radio evidence confirmed the known lockup. Recovery remains disabled.</string>
     <string name="scanner_error_detail">The wifiscanner diagnostic returned code %1$d. Recovery remains disabled.</string>
-    <string name="lockup_probable_detail">ScanningState remained stuck after a second check on the validated .377 firmware. No active link or low-level access points were available, which can happen when scanning itself is broken. Recovery is available; save open work first.</string>
+    <string name="lockup_probable_detail">On the validated .377 build, the scanner either stayed stuck or returned no usable state. Recovery is available; save open work first.</string>
     <string name="scanner_unknown_detail">The scanner state could not be classified safely. Recovery remains disabled.</string>
     <string name="recovery_success_detail">The scanner returned to IdleState after the framework restart. Recovery is verified.</string>
     <string name="recovery_failed_detail">The validated lockup signature is still present after recovery. You can retry once after saving open work.</string>
@@ -67,6 +67,7 @@
     <string name="detail_scanner">Scanner</string>
     <string name="detail_carrier">Wi-Fi link</string>
     <string name="detail_radio_aps">Radio AP count</string>
+    <string name="detail_radio_aps_short">Radio APs</string>
     <string name="detail_not_checked">Not checked</string>
     <string name="detail_supported">Validated</string>
     <string name="detail_not_supported">Not validated</string>
@@ -81,4 +82,7 @@
     <string name="details_show_short">View details</string>
     <string name="details_hide_short">Hide details</string>
     <string name="copy_report_short">Copy report</string>
+    <string name="detail_android">Android</string>
+    <string name="detail_model">Model</string>
+    <string name="detail_wifi_interface">Wi-Fi interface</string>
 </resources>

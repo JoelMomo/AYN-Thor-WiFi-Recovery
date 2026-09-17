@@ -47,11 +47,11 @@ final class DiagnosticEngine {
         }
 
         boolean scannerIdle() {
-            return scannerStateLine.contains("dest=IdleState");
+            return scannerStateLine.contains("IdleState") && !scannerStateLine.contains("ScanningState");
         }
 
         boolean scannerScanning() {
-            return scannerStateLine.contains("dest=ScanningState");
+            return scannerStateLine.contains("ScanningState");
         }
 
         Diagnosis diagnosis() {
@@ -65,6 +65,10 @@ final class DiagnosticEngine {
             if (scannerRc == 124) return Diagnosis.SCANNER_TIMEOUT;
             if (scannerRc != 0) return Diagnosis.SCANNER_ERROR;
             if (scannerScanning()) return Diagnosis.LOCKUP_PROBABLE;
+            // On the exact validated .377 build, dumpsys wifiscanner can return success
+            // without exposing a parseable state while the user-facing scanner is broken.
+            // Recovery only restarts Android's framework, so keep a guarded fallback.
+            if (scannerRc == 0) return Diagnosis.LOCKUP_PROBABLE;
             return Diagnosis.SCANNER_UNKNOWN;
         }
     }

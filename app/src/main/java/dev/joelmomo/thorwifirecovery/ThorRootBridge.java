@@ -37,8 +37,7 @@ final class ThorRootBridge {
                 && device.wifiEnabled && device.wlanPresent) {
             scannerState = execute(
                     "timeout 5 dumpsys wifiscanner "
-                    + "| sed -n '/WifiSingleScanStateMachine:/,/^$/p' "
-                    + "| grep 'dest=' | tail -n 1").trim();
+                    + "| grep -E 'dest=|IdleState|ScanningState' | tail -n 1").trim();
             if (scannerState.isEmpty()) {
                 scannerRc = execute(
                         "timeout 5 dumpsys wifiscanner >/dev/null 2>&1; echo $?").trim();
@@ -46,7 +45,7 @@ final class ThorRootBridge {
                 scannerRc = "0";
             }
 
-            boolean scannerScanning = scannerState.contains("dest=ScanningState");
+            boolean scannerScanning = scannerState.contains("ScanningState");
             boolean carrierUp = "1".equals(carrier);
             if (scannerScanning) {
                 if (!carrierUp) {
@@ -58,8 +57,7 @@ final class ThorRootBridge {
                 }
                 String followUpState = execute(
                         "timeout 5 dumpsys wifiscanner "
-                        + "| sed -n '/WifiSingleScanStateMachine:/,/^$/p' "
-                        + "| grep 'dest=' | tail -n 1").trim();
+                        + "| grep -E 'dest=|IdleState|ScanningState' | tail -n 1").trim();
                 if (followUpState.isEmpty()) {
                     scannerState = "";
                     scannerRc = execute(
