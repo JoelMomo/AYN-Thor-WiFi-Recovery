@@ -54,6 +54,22 @@ public class DiagnosticEngineTest {
                 snapshot(true, true, false, 0, "dest=ScanningState", "").diagnosis());
     }
 
+    @Test public void probableLockupWithoutLowLevelEvidenceRequiresHalReset() {
+        assertTrue(snapshot(true, true, false, 0,
+                "dest=ScanningState", "").requiresHalReset());
+    }
+
+    @Test public void confirmedLockupWithCarrierUsesFrameworkRestartOnly() {
+        assertFalse(snapshot(true, true, true, 0,
+                "dest=ScanningState", "").requiresHalReset());
+    }
+
+    @Test public void confirmedLockupWithVisibleRadioUsesFrameworkRestartOnly() {
+        String ap = "aa:bb:cc:dd:ee:ff 2412 -55 [ESS] test";
+        assertFalse(snapshot(true, true, false, 0,
+                "dest=ScanningState", ap).requiresHalReset());
+    }
+
     @Test public void successfulButUnparseableScannerOnValidatedBuildIsRecoverable() {
         assertEquals(DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE,
                 snapshot(true, true, false, 0, "", "").diagnosis());

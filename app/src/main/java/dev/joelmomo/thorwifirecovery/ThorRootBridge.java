@@ -76,8 +76,13 @@ final class ThorRootBridge {
                 + "\n__RADIO_RESULTS__\n" + radioResults;
     }
 
-    static void recover() throws Exception {
-        execute("setprop ctl.restart zygote");
+    static void recover(boolean resetWifiHal) throws Exception {
+        if (resetWifiHal) {
+            execute("setprop ctl.restart vendor.wifi_hal_legacy; "
+                    + "sleep 2; setprop ctl.restart zygote");
+        } else {
+            execute("setprop ctl.restart zygote");
+        }
     }
 
     private static String execute(String command) throws Exception {

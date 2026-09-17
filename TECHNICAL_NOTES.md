@@ -90,6 +90,34 @@ The app now exposes the installed version and detected firmware in the UI, provi
 
 Local unit coverage is 14 tests: 13 diagnosis tests plus a report-privacy test. GitHub Actions repeats unit tests, lint and a debug build on pushes and pull requests, checks the built APK for `android.permission.INTERNET`, and rejects obvious sensitive Wi-Fi logging patterns in app source.
 
+## Beta11 adaptive recovery
+
+Testing on the validated `.377` unit showed that restarting Android's framework with
+`setprop ctl.restart zygote` can recover the scanner, but it is not the only layer
+that can remain stale. The vendor Wi-Fi HAL on this build is managed by the init
+service `vendor.wifi_hal_legacy`.
+
+Direct device testing found:
+
+- restarting the vendor Wi-Fi HAL without restarting Android's framework was not
+  sufficient; the existing framework-side scanner could remain stale;
+- restarting the vendor Wi-Fi HAL and then restarting zygote restored association,
+  framework scan results and `WifiSingleScanStateMachine` to `IdleState`;
+- a normal zygote-only recovery remains sufficient when the link or low-level scan
+  evidence shows that the radio path is still alive.
+
+`v0.3.0-beta11` therefore uses adaptive recovery:
+
+- framework-only recovery when carrier or low-level AP evidence is present;
+- vendor Wi-Fi HAL + framework recovery when there is no carrier and no low-level
+  AP evidence;
+- an 8-second settling delay plus a second verification 5 seconds later;
+- one automatic escalation from framework-only to HAL + framework recovery if the
+  scanner is still locked after both checks.
+
+This is still a recovery workaround for the stock firmware defect, not a permanent
+firmware modification.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.

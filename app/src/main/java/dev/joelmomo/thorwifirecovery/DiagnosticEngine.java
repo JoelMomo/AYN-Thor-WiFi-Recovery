@@ -67,9 +67,15 @@ final class DiagnosticEngine {
             if (scannerScanning()) return Diagnosis.LOCKUP_PROBABLE;
             // On the exact validated .377 build, dumpsys wifiscanner can return success
             // without exposing a parseable state while the user-facing scanner is broken.
-            // Recovery only restarts Android's framework, so keep a guarded fallback.
             if (scannerRc == 0) return Diagnosis.LOCKUP_PROBABLE;
             return Diagnosis.SCANNER_UNKNOWN;
+        }
+
+        boolean requiresHalReset() {
+            Diagnosis diagnosis = diagnosis();
+            return (diagnosis == Diagnosis.LOCKUP_CONFIRMED
+                    || diagnosis == Diagnosis.LOCKUP_PROBABLE)
+                    && !carrierUp && radioAps == 0;
         }
     }
 

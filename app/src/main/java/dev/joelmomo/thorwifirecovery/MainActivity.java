@@ -39,7 +39,12 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
     private static final String PREFS = "recovery_state";
     private static final String KEY_RECOVERY_PENDING = "recovery_pending";
+    private static final String KEY_RECOVERY_STAGE = "recovery_stage";
     private static final String KEY_LIGHT_THEME = "light_theme";
+    private static final int RECOVERY_STAGE_LIGHT = 1;
+    private static final int RECOVERY_STAGE_DEEP = 2;
+    private static final long POST_RECOVERY_SETTLE_MS = 8000L;
+    private static final long POST_RECOVERY_RETRY_MS = 5000L;
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
@@ -337,15 +342,36 @@ public class MainActivity extends Activity {
         worker.execute(() -> {
             try {
                 if (fullDiagnosis) {
+                    if (postRecovery) Thread.sleep(POST_RECOVERY_SETTLE_MS);
                     DiagnosticEngine.Snapshot snapshot =
                             DiagnosticEngine.parseDiagnosis(ThorRootBridge.diagnoseScanner());
+                    if (postRecovery
+                            && snapshot.diagnosis() != DiagnosticEngine.Diagnosis.READY) {
+                        Thread.sleep(POST_RECOVERY_RETRY_MS);
+                        snapshot = DiagnosticEngine.parseDiagnosis(
+                                ThorRootBridge.diagnoseScanner());
+                    }
+                    final DiagnosticEngine.Snapshot result = snapshot;
                     android.util.Log.i("ThorWiFiRecovery",
-                            "diagnosis=" + snapshot.diagnosis()
-                                    + " carrierUp=" + snapshot.carrierUp
-                                    + " scannerRc=" + snapshot.scannerRc
-                                    + " radioAps=" + snapshot.radioAps
-                                    + " scannerState=" + snapshot.scannerStateLine);
-                    runOnUiThread(() -> showDiagnosis(snapshot, postRecovery));
+                            "diagnosis=" + result.diagnosis()
+                                    + " carrierUp=" + result.carrierUp
+                                    + " scannerRc=" + result.scannerRc
+                                    + " radioAps=" + result.radioAps
+                                    + " scannerState=" + result.scannerStateLine);
+                    if (postRecovery
+                            && isRecoverableLockup(result.diagnosis())
+                            && prefs().getInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP)
+                                    == RECOVERY_STAGE_LIGHT) {
+                        boolean escalated = prefs().edit()
+                                .putInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP).commit();
+                        if (escalated) {
+                            android.util.Log.i("ThorWiFiRecovery",
+                                    "recoveryEscalation=wifi-hal+zygote");
+                            ThorRootBridge.recover(true);
+                            return;
+                        }
+                    }
+                    runOnUiThread(() -> showDiagnosis(result, postRecovery));
                 } else {
                     DiagnosticEngine.DeviceInfo info =
                             DiagnosticEngine.parseProbe(ThorRootBridge.probe());
@@ -393,7 +419,7 @@ public class MainActivity extends Activity {
         updateBuildInfo(snapshot.device);
         updateDetails(snapshot.device, snapshot);
         if (postRecovery) {
-            prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+            clearRecoveryState();
             showPostRecovery(snapshot);
             setBusy(false);
             return;
@@ -507,7 +533,7 @@ public class MainActivity extends Activity {
     }
 
     private void showServiceError(Exception e, boolean postRecovery) {
-        if (postRecovery) prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+        if (postRecovery) clearRecoveryState();
         lastSnapshot = null;
         statusTitle.setText(postRecovery
                 ? R.string.status_recovery_unverified
@@ -528,7 +554,14 @@ public class MainActivity extends Activity {
     }
     private void runRecovery() {
         setBusy(true);
-        boolean persisted = prefs().edit().putBoolean(KEY_RECOVERY_PENDING, true).commit();
+        final boolean resetWifiHal =
+                lastSnapshot != null && lastSnapshot.requiresHalReset();
+        final int recoveryStage = resetWifiHal
+                ? RECOVERY_STAGE_DEEP : RECOVERY_STAGE_LIGHT;
+        boolean persisted = prefs().edit()
+                .putBoolean(KEY_RECOVERY_PENDING, true)
+                .putInt(KEY_RECOVERY_STAGE, recoveryStage)
+                .commit();
         if (!persisted) {
             statusTitle.setText(R.string.status_unavailable);
             statusDetail.setText(R.string.pending_state_error);
@@ -537,14 +570,28 @@ public class MainActivity extends Activity {
             return;
         }
 
+        android.util.Log.i("ThorWiFiRecovery",
+                "recoveryMode=" + (resetWifiHal ? "wifi-hal+zygote" : "zygote"));
         worker.execute(() -> {
             try {
-                ThorRootBridge.recover();
+                ThorRootBridge.recover(resetWifiHal);
             } catch (Exception e) {
-                prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+                clearRecoveryState();
                 runOnUiThread(() -> showServiceError(e, false));
             }
         });
+    }
+
+    private boolean isRecoverableLockup(DiagnosticEngine.Diagnosis diagnosis) {
+        return diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED
+                || diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE;
+    }
+
+    private void clearRecoveryState() {
+        prefs().edit()
+                .remove(KEY_RECOVERY_PENDING)
+                .remove(KEY_RECOVERY_STAGE)
+                .apply();
     }
 
     private SharedPreferences prefs() {

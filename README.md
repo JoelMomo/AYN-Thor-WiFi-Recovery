@@ -15,14 +15,17 @@ This is **not an official AYN fix** and it does not modify the firmware.
 
 ## Android app (beta)
 
-The repository also contains an Android app in `app/`. Current beta: `0.3.0-beta2`.
+The repository also contains an Android app in `app/`. Current beta: `0.3.0-beta11`.
 
 - UI language follows Android's system language; English and Spanish are included.
 - It uses AYN's built-in `PServerBinder` service for a fixed, narrow set of diagnostic/recovery commands.
 - The Binder invocation pattern is adapted from `parthi1994/ayn-thor-wifi-recovery` under MIT; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - The diagnostic does **not** start an Android framework scan. It reads the `WifiSingleScanStateMachine` state with a bounded `dumpsys wifiscanner` query.
 - If the scanner is stuck in `ScanningState` while the Wi-Fi link is active, **Recover Wi-Fi** is enabled.
-- If the link is down, a low-level `wpa_cli` scan is used only as secondary evidence that the radio can still see APs.
+- If the link is down, a low-level `wpa_cli` scan is used as secondary evidence that the radio can still see APs.
+- When the framework is stuck but the low-level radio path still responds, recovery restarts Android's runtime/framework.
+- When there is no carrier and no low-level AP evidence, recovery first restarts the `.377` vendor Wi-Fi HAL and then restarts Android's runtime/framework.
+- If the light recovery is still stuck after delayed verification and a retry, the app automatically escalates once to the deeper HAL + framework recovery.
 - `IdleState` or an unconfirmed signature keeps recovery disabled.
 - The exact validated `.377` build is checked before recovery can be enabled; unknown firmware fails closed.
 - After recovery, the app stores a pending-verification flag and checks the scanner automatically when Android returns.
@@ -35,7 +38,7 @@ This state-based check avoids using `cmd wifi start-scan` as a diagnostic action
 
 ### Signed APK
 
-The current beta is `v0.3.0-beta2`. Download the signed APK from the GitHub Releases page.
+The current beta is `v0.3.0-beta11`. Download the signed APK from the GitHub Releases page.
 
 - Release certificate SHA-256: `0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
 - The app requests no Internet permission and does not store Wi-Fi credentials.
