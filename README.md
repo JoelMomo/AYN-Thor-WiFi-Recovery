@@ -11,6 +11,22 @@ Temporary workaround for an intermittent Wi-Fi scanning lockup observed on the s
 
 This is **not an official AYN fix** and it does not modify the firmware.
 
+## Android app (alpha)
+
+The repository now also contains an Android app in `app/`.
+
+- UI language follows Android's system language.
+- English is the default resource set; Spanish is provided in `values-es`.
+- The app uses AYN's built-in `PServerBinder` service for a fixed, narrow set of diagnostic/recovery commands.
+- The Binder invocation pattern is adapted from `parthi1994/ayn-thor-wifi-recovery` under MIT; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Recover Wi-Fi** stays disabled until the diagnostic matches the validated framework-only failure signature.
+
+The diagnostic compares Android scan results with a low-level `wpa_cli` scan:
+
+- Android sees APs -> scan path is working; recovery stays disabled.
+- Android sees 0 APs but the radio sees APs -> validated `.377` framework lockup; recovery is enabled.
+- Android and the radio both see 0 APs -> different failure signature; recovery stays disabled.
+
 ## When to use it
 
 Use this only when the Thor is affected by the same failure pattern:

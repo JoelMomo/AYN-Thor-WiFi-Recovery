@@ -38,6 +38,18 @@ The evidence points to an intermittent lockup in the Android Wi-Fi scanning/fram
 
 The failure was also reproduced with Wi-Fi 7 enabled and recovered without changing router settings, so the script is intentionally router-independent.
 
+## Additional failure signature observed
+
+A later test produced a different state: both `cmd wifi list-scan-results` and a root `wpa_cli -i wlan0 scan_results` returned zero APs. Restarting `wpa_supplicant`, `wificond`, and `vendor.wifi_hal_legacy` individually did not restore scan results.
+
+The Android app therefore treats this as a different failure signature and does not enable the validated zygote recovery path for it.
+
+## App diagnostic rule
+
+- Android APs > 0: healthy scan path.
+- Android APs = 0 and low-level radio APs > 0: validated framework-only lockup; recovery may be offered.
+- Android APs = 0 and low-level radio APs = 0: different/undetermined failure; recovery remains disabled.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.
