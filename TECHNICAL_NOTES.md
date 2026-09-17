@@ -57,6 +57,16 @@ The current alpha does not trigger an Android framework scan merely to diagnose 
 
 The scanner query is bounded with `timeout` so a hung `wifiscanner` service cannot block the app indefinitely.
 
+## Android app end-to-end validation
+
+`v0.2.0-alpha4` was validated on the same `.377` Thor with the scanner stuck in `ScanningState` while the Wi-Fi link remained active. The app enabled recovery, executed the zygote/framework restart, and after Android returned the scanner reported `IdleState`, Wi-Fi was associated again, and the recovery button was disabled.
+
+The public release APK was then installed on the device and re-checked. The installed APK SHA-256 matched the published build exactly, and its signing certificate SHA-256 was:
+
+`0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
+
+The release manifest declares no app permissions.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.
