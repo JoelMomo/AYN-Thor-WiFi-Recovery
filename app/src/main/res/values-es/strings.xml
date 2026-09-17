@@ -73,5 +73,8 @@
     <string name="detail_active">Activo</string>
     <string name="detail_inactive">Inactivo</string>
     <string name="detail_unknown">Desconocido</string>
+    <string name="theme_toggle">Cambiar tema claro/oscuro</string>
+    <string name="status_info">InformaciÃ³n del estado</string>
+    <string name="recovery_info">InformaciÃ³n de recuperaciÃ³n</string>
     <string name="privacy_note">Sin telemetría, sin permiso de Internet y sin guardar contraseñas.</string>
 </resources>

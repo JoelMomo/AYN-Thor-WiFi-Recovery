@@ -16,6 +16,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,10 +27,14 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
     private static final String PREFS = "recovery_state";
     private static final String KEY_RECOVERY_PENDING = "recovery_pending";
+    private static final String KEY_LIGHT_THEME = "light_theme";
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
     private TextView statusDetail;
+    private TextView statusInfoButton;
+    private ProgressBar statusSpinner;
+    private TextView themeToggle;
     private TextView buildInfo;
     private LinearLayout statusCard;
     private View statusRail;
@@ -46,11 +51,21 @@ public class MainActivity extends Activity {
     private Button projectButton;
     private DiagnosticEngine.Snapshot lastSnapshot;
     private boolean diagnosisAllowed = true;
+    private boolean isLightTheme;
+    private int colorBg, colorCard, colorCardSoft, colorOutline, colorAccent;
+    private int colorTextPrimary, colorTextSecondary, colorTextMuted, colorButtonText;
+    private int colorChipValidated, colorChipNeutral, colorDetailText;
+    private int toneOk, toneRecovery, toneWarning, toneError, toneNeutral;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(11,16,20));
-        getWindow().setNavigationBarColor(Color.rgb(11,16,20));
+        isLightTheme = prefs().getBoolean(KEY_LIGHT_THEME, false);
+        applyPalette();
+        getWindow().setStatusBarColor(colorBg);
+        getWindow().setNavigationBarColor(colorBg);
+        getWindow().getDecorView().setSystemUiVisibility(isLightTheme
+                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                : 0);
         buildUi();
         boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
         runProbe(pending, pending);
@@ -62,14 +77,14 @@ public class MainActivity extends Activity {
     }
 
     private void buildUi() {
-        final int bg = Color.rgb(9, 13, 16);
-        final int card = Color.rgb(17, 24, 29);
-        final int cardSoft = Color.rgb(13, 19, 23);
-        final int outline = Color.rgb(38, 52, 60);
-        final int accent = Color.rgb(119, 216, 199);
-        final int textPrimary = Color.rgb(242, 246, 247);
-        final int textSecondary = Color.rgb(170, 182, 188);
-        final int textMuted = Color.rgb(116, 132, 140);
+        final int bg = colorBg;
+        final int card = colorCard;
+        final int cardSoft = colorCardSoft;
+        final int outline = colorOutline;
+        final int accent = colorAccent;
+        final int textPrimary = colorTextPrimary;
+        final int textSecondary = colorTextSecondary;
+        final int textMuted = colorTextMuted;
         final boolean wide = getResources().getConfiguration().screenWidthDp >= 700;
 
         ScrollView scroll = new ScrollView(this);
@@ -97,10 +112,15 @@ public class MainActivity extends Activity {
 
         LinearLayout chips = new LinearLayout(this);
         chips.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-        chips.addView(chip(getString(R.string.chip_validated), Color.rgb(24, 56, 51), accent));
-        chips.addView(chip(getString(R.string.chip_offline), Color.rgb(31, 42, 48), textSecondary), chipMargin());
+        chips.addView(chip(getString(R.string.chip_validated), colorChipValidated, accent));
+        chips.addView(chip(getString(R.string.chip_offline), colorChipNeutral, textSecondary), chipMargin());
+        themeToggle = iconButton(isLightTheme ? "\u2600" : "\u263E", getString(R.string.theme_toggle));
+        themeToggle.setOnClickListener(v -> toggleTheme());
         if (wide) {
             header.addView(chips);
+            header.addView(themeToggle, iconMargin());
+        } else {
+            header.addView(themeToggle);
         }
         root.addView(header);
         if (!wide) {
@@ -127,11 +147,24 @@ public class MainActivity extends Activity {
         LinearLayout statusContent = column();
         statusContent.setPadding(dp(18), dp(14), dp(18), dp(16));
         statusContent.addView(sectionLabel(getString(R.string.section_status)));
+        LinearLayout statusTitleRow = new LinearLayout(this);
+        statusTitleRow.setGravity(Gravity.CENTER_VERTICAL);
         statusTitle = text(getString(R.string.status_checking), 21, accent, true);
         statusTitle.setPadding(0, dp(6), 0, 0);
-        statusContent.addView(statusTitle);
-        statusDetail = text("", 13, Color.rgb(202, 211, 215), false);
-        statusDetail.setPadding(0, dp(5), 0, 0);
+        statusTitleRow.addView(statusTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        statusSpinner = new ProgressBar(this);
+        statusSpinner.setIndeterminate(true);
+        statusSpinner.getIndeterminateDrawable().setTint(accent);
+        statusSpinner.setVisibility(View.GONE);
+        statusTitleRow.addView(statusSpinner, spinnerParams());
+        statusInfoButton = infoButton(getString(R.string.status_info));
+        statusInfoButton.setVisibility(View.GONE);
+        statusInfoButton.setOnClickListener(v -> toggleInfo(statusDetail, statusInfoButton));
+        statusTitleRow.addView(statusInfoButton, iconMargin());
+        statusContent.addView(statusTitleRow);
+        statusDetail = text("", 13, colorDetailText, false);
+        statusDetail.setPadding(0, dp(8), 0, 0);
+        statusDetail.setVisibility(View.GONE);
         statusContent.addView(statusDetail);
         statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -2, 1f));
         left.addView(statusCard, matchWrap(0, 0, 0, 12));
@@ -154,11 +187,18 @@ public class MainActivity extends Activity {
         LinearLayout recoveryCard = column();
         recoveryCard.setPadding(dp(18), dp(15), dp(18), dp(17));
         recoveryCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
-        recoveryCard.addView(sectionLabel(getString(R.string.section_recovery)));
+        LinearLayout recoveryHeader = new LinearLayout(this);
+        recoveryHeader.setGravity(Gravity.CENTER_VERTICAL);
+        recoveryHeader.addView(sectionLabel(getString(R.string.section_recovery)), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView recoveryInfo = infoButton(getString(R.string.recovery_info));
+        recoveryHeader.addView(recoveryInfo);
+        recoveryCard.addView(recoveryHeader);
         TextView recoveryHint = text(getString(R.string.recovery_hint), 13, textSecondary, false);
-        recoveryHint.setPadding(0, dp(6), 0, dp(12));
+        recoveryHint.setPadding(0, dp(8), 0, dp(12));
+        recoveryHint.setVisibility(View.GONE);
+        recoveryInfo.setOnClickListener(v -> toggleInfo(recoveryHint, recoveryInfo));
         recoveryCard.addView(recoveryHint);
-        recoverButton = button(getString(R.string.recover), accent, Color.rgb(4, 33, 30));
+        recoverButton = button(getString(R.string.recover), accent, colorButtonText);
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> confirmRecovery());
         recoveryCard.addView(recoverButton);
@@ -456,6 +496,11 @@ public class MainActivity extends Activity {
         reportButton.setAlpha(reportButton.isEnabled() ? 1f : 0.55f);
         projectButton.setEnabled(!busy);
         projectButton.setAlpha(projectButton.isEnabled() ? 1f : 0.55f);
+        themeToggle.setEnabled(!busy);
+        themeToggle.setAlpha(busy ? 0.55f : 1f);
+        statusSpinner.setVisibility(busy ? View.VISIBLE : View.GONE);
+        statusInfoButton.setVisibility(busy ? View.GONE : View.VISIBLE);
+        if (busy) statusDetail.setVisibility(View.GONE);
     }
 
     private void copyDiagnosticReport() {
@@ -477,25 +522,40 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void applyPalette() {
+        if (isLightTheme) {
+            colorBg=Color.rgb(244,247,248); colorCard=Color.WHITE; colorCardSoft=Color.rgb(249,251,251); colorOutline=Color.rgb(211,223,227); colorAccent=Color.rgb(25,126,114); colorTextPrimary=Color.rgb(20,35,40); colorTextSecondary=Color.rgb(78,99,107); colorTextMuted=Color.rgb(111,131,138); colorButtonText=Color.rgb(5,43,39); colorChipValidated=Color.rgb(222,244,239); colorChipNeutral=Color.rgb(231,237,239); colorDetailText=Color.rgb(67,84,91); toneOk=Color.rgb(22,135,120); toneRecovery=Color.rgb(190,91,56); toneWarning=Color.rgb(156,100,7); toneError=Color.rgb(190,58,58); toneNeutral=Color.rgb(88,116,127);
+        } else {
+            colorBg=Color.rgb(9,13,16); colorCard=Color.rgb(17,24,29); colorCardSoft=Color.rgb(13,19,23); colorOutline=Color.rgb(38,52,60); colorAccent=Color.rgb(119,216,199); colorTextPrimary=Color.rgb(242,246,247); colorTextSecondary=Color.rgb(170,182,188); colorTextMuted=Color.rgb(116,132,140); colorButtonText=Color.rgb(4,33,30); colorChipValidated=Color.rgb(24,56,51); colorChipNeutral=Color.rgb(31,42,48); colorDetailText=Color.rgb(202,211,215); toneOk=Color.rgb(110,214,197); toneRecovery=Color.rgb(255,151,118); toneWarning=Color.rgb(238,190,103); toneError=Color.rgb(255,132,132); toneNeutral=Color.rgb(157,184,198);
+        }
+    }
+
+    private void toggleTheme() { prefs().edit().putBoolean(KEY_LIGHT_THEME, !isLightTheme).apply(); recreate(); }
+    private void toggleInfo(View body, TextView button) { boolean show=body.getVisibility()!=View.VISIBLE; body.setVisibility(show?View.VISIBLE:View.GONE); }
+    private TextView infoButton(String description) { TextView v=iconButton("i",description); v.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD); return v; }
+    private TextView iconButton(String symbol,String description) { TextView v=text(symbol,17,colorTextPrimary,false); v.setGravity(Gravity.CENTER); v.setContentDescription(description); v.setBackground(roundRectStroke(Color.TRANSPARENT,colorOutline,999,1)); v.setMinWidth(dp(34)); v.setMinHeight(dp(34)); return v; }
+    private LinearLayout.LayoutParams iconMargin() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(34),dp(34)); p.setMargins(dp(10),0,0,0); return p; }
+    private LinearLayout.LayoutParams spinnerParams() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30)); p.setMargins(dp(10),0,0,0); return p; }
+
     private enum StatusTone { OK, RECOVERY, WARNING, ERROR, NEUTRAL }
 
     private void setStatusVisual(StatusTone tone) {
         int titleColor;
         switch (tone) {
             case OK:
-                titleColor = Color.rgb(110, 214, 197);
+                titleColor = toneOk;
                 break;
             case RECOVERY:
-                titleColor = Color.rgb(255, 151, 118);
+                titleColor = toneRecovery;
                 break;
             case WARNING:
-                titleColor = Color.rgb(238, 190, 103);
+                titleColor = toneWarning;
                 break;
             case ERROR:
-                titleColor = Color.rgb(255, 132, 132);
+                titleColor = toneError;
                 break;
             default:
-                titleColor = Color.rgb(157, 184, 198);
+                titleColor = toneNeutral;
         }
         statusTitle.setTextColor(titleColor);
         statusRail.setBackground(roundRect(titleColor, 999));
@@ -503,7 +563,7 @@ public class MainActivity extends Activity {
 
     private TextView sectionLabel(String value) {
         TextView view = text(value.toUpperCase(java.util.Locale.ROOT), 11,
-                Color.rgb(112, 128, 137), true);
+                colorTextMuted, true);
         view.setLetterSpacing(0.12f);
         return view;
     }
@@ -523,14 +583,13 @@ public class MainActivity extends Activity {
     }
 
     private Button outlineButton(String value) {
-        Button button = button(value, Color.rgb(18, 25, 30), Color.rgb(226, 233, 236));
-        button.setBackground(roundRectStroke(Color.rgb(18, 25, 30),
-                Color.rgb(58, 75, 84), 16, 1));
+        Button button = button(value, colorCard, colorTextPrimary);
+        button.setBackground(roundRectStroke(colorCard, colorOutline, 16, 1));
         return button;
     }
 
     private Button textButton(String value) {
-        Button button = button(value, Color.TRANSPARENT, Color.rgb(110, 214, 197));
+        Button button = button(value, Color.TRANSPARENT, colorAccent);
         button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         button.setPadding(0, 0, 0, 0);
         button.setMinHeight(dp(42));
@@ -546,8 +605,8 @@ public class MainActivity extends Activity {
     private TextView addDetail(LinearLayout parent, int labelRes, int initialValueRes) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView label = text(getString(labelRes), 13, Color.rgb(126, 141, 149), false);
-        TextView value = text(getString(initialValueRes), 13, Color.rgb(224, 231, 234), true);
+        TextView label = text(getString(labelRes), 13, colorTextMuted, false);
+        TextView value = text(getString(initialValueRes), 13, colorTextPrimary, true);
         value.setGravity(Gravity.END);
         row.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         row.addView(value, new LinearLayout.LayoutParams(0, -2, 1.35f));
@@ -557,7 +616,7 @@ public class MainActivity extends Activity {
 
     private View divider() {
         View view = new View(this);
-        view.setBackgroundColor(Color.rgb(39, 50, 56));
+        view.setBackgroundColor(colorOutline);
         view.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(1)));
         return view;
     }
