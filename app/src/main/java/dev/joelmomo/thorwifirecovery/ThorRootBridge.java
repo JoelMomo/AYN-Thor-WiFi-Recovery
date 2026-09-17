@@ -48,10 +48,26 @@ final class ThorRootBridge {
 
             boolean scannerScanning = scannerState.contains("dest=ScanningState");
             boolean carrierUp = "1".equals(carrier);
-            if (scannerScanning && !carrierUp) {
-                execute("/vendor/bin/wpa_cli -i wlan0 scan");
-                Thread.sleep(4000);
-                radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+            if (scannerScanning) {
+                if (!carrierUp) {
+                    execute("/vendor/bin/wpa_cli -i wlan0 scan");
+                    Thread.sleep(4000);
+                    radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+                } else {
+                    Thread.sleep(2000);
+                }
+                String followUpState = execute(
+                        "timeout 5 dumpsys wifiscanner "
+                        + "| sed -n '/WifiSingleScanStateMachine:/,/^$/p' "
+                        + "| grep 'dest=' | tail -n 1").trim();
+                if (followUpState.isEmpty()) {
+                    scannerState = "";
+                    scannerRc = execute(
+                            "timeout 5 dumpsys wifiscanner >/dev/null 2>&1; echo $?").trim();
+                } else {
+                    scannerState = followUpState;
+                    scannerRc = "0";
+                }
             }
         }
 

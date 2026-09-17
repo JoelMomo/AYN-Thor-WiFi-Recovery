@@ -11,13 +11,14 @@
     <string name="status_lockup">Recovery available</string>
     <string name="status_scanner_timeout">Scanner service did not respond</string>
     <string name="status_scanner_error">Scanner diagnostic failed</string>
-    <string name="status_scanner_unconfirmed">No safe recovery</string>
+    <string name="status_lockup_probable">Probable Wi-Fi lockup</string>
     <string name="status_scanner_unknown">Couldn’t verify the scanner</string>
     <string name="status_recovery_success">Wi-Fi recovered</string>
     <string name="status_recovery_failed">Scanner still stuck</string>
     <string name="status_recovery_unverified">Recovery could not be verified</string>
     <string name="diagnose">Check Wi-Fi status</string>
     <string name="recover">Recover Wi-Fi</string>
+    <string name="recover_probable">Try Wi-Fi recovery</string>
     <string name="validated_firmware_detail">This .377 build is supported. Run a check if the network list is empty.</string>
     <string name="unsupported_firmware_detail">This recovery is validated only on Thor_V1.0.0.377_20260206_165408_user. Current build: %1$s. Recovery is disabled.</string>
     <string name="wifi_off_detail">Turn Wi-Fi on before checking the scanner. Recovery remains disabled.</string>
@@ -30,7 +31,7 @@
     </plurals>
     <string name="scanner_timeout_detail">wifiscanner did not complete within 5 seconds and no independent radio evidence confirmed the known lockup. Recovery remains disabled.</string>
     <string name="scanner_error_detail">The wifiscanner diagnostic returned code %1$d. Recovery remains disabled.</string>
-    <string name="scanner_unconfirmed_detail">ScanningState was observed, but neither an active link nor visible access points confirmed the validated framework-only lockup. Recovery remains disabled.</string>
+    <string name="lockup_probable_detail">ScanningState remained stuck after a second check on the validated .377 firmware. No active link or low-level access points were available, which can happen when scanning itself is broken. Recovery is available; save open work first.</string>
     <string name="scanner_unknown_detail">The scanner state could not be classified safely. Recovery remains disabled.</string>
     <string name="recovery_success_detail">The scanner returned to IdleState after the framework restart. Recovery is verified.</string>
     <string name="recovery_failed_detail">The validated lockup signature is still present after recovery. You can retry once after saving open work.</string>
@@ -56,7 +57,7 @@
     <string name="section_status">Status</string>
     <string name="section_recovery">Recovery</string>
     <string name="section_tools">Tools</string>
-    <string name="recovery_hint">Enabled only after the lockup is confirmed. Restarting Android’s framework closes open apps.</string>
+    <string name="recovery_hint">Available when the .377 scanner lockup is confirmed or remains stuck across checks. Restarting Android’s framework closes open apps.</string>
     <string name="chip_validated">AYN Thor · .377</string>
     <string name="chip_offline">Local · no Internet</string>
     <string name="details_show">Device details  ›</string>

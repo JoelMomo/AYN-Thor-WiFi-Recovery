@@ -14,7 +14,7 @@ final class DiagnosticEngine {
         WLAN_MISSING,
         SCANNER_TIMEOUT,
         SCANNER_ERROR,
-        SCANNER_UNCONFIRMED,
+        LOCKUP_PROBABLE,
         SCANNER_UNKNOWN
     }
 
@@ -64,7 +64,7 @@ final class DiagnosticEngine {
             }
             if (scannerRc == 124) return Diagnosis.SCANNER_TIMEOUT;
             if (scannerRc != 0) return Diagnosis.SCANNER_ERROR;
-            if (scannerScanning()) return Diagnosis.SCANNER_UNCONFIRMED;
+            if (scannerScanning()) return Diagnosis.LOCKUP_PROBABLE;
             return Diagnosis.SCANNER_UNKNOWN;
         }
     }

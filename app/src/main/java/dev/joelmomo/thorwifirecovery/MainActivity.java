@@ -291,6 +291,7 @@ public class MainActivity extends Activity {
 
         DiagnosticEngine.Diagnosis diagnosis = snapshot.diagnosis();
         recoverButton.setEnabled(false);
+        recoverButton.setText(R.string.recover);
         diagnosisAllowed = diagnosis != DiagnosticEngine.Diagnosis.UNSUPPORTED_FIRMWARE
                 && diagnosis != DiagnosticEngine.Diagnosis.WLAN_MISSING;
 
@@ -307,6 +308,13 @@ public class MainActivity extends Activity {
                         : getResources().getQuantityString(R.plurals.lockup_detail, snapshot.radioAps, snapshot.radioAps));
                 recoverButton.setEnabled(true);
                 setStatusVisual(StatusTone.RECOVERY);
+                break;
+            case LOCKUP_PROBABLE:
+                statusTitle.setText(R.string.status_lockup_probable);
+                statusDetail.setText(R.string.lockup_probable_detail);
+                recoverButton.setText(R.string.recover_probable);
+                recoverButton.setEnabled(true);
+                setStatusVisual(StatusTone.WARNING);
                 break;
             case UNSUPPORTED_FIRMWARE:
                 statusTitle.setText(R.string.status_unsupported);
@@ -334,11 +342,6 @@ public class MainActivity extends Activity {
                 statusDetail.setText(getString(R.string.scanner_error_detail, snapshot.scannerRc));
                 setStatusVisual(StatusTone.ERROR);
                 break;
-            case SCANNER_UNCONFIRMED:
-                statusTitle.setText(R.string.status_scanner_unconfirmed);
-                statusDetail.setText(R.string.scanner_unconfirmed_detail);
-                setStatusVisual(StatusTone.WARNING);
-                break;
             default:
                 statusTitle.setText(R.string.status_scanner_unknown);
                 statusDetail.setText(R.string.scanner_unknown_detail);
@@ -358,9 +361,12 @@ public class MainActivity extends Activity {
             statusTitle.setText(R.string.status_recovery_success);
             statusDetail.setText(R.string.recovery_success_detail);
             setStatusVisual(StatusTone.OK);
-        } else if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED) {
+        } else if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED
+                || diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE) {
             statusTitle.setText(R.string.status_recovery_failed);
             statusDetail.setText(R.string.recovery_failed_detail);
+            recoverButton.setText(diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE
+                    ? R.string.recover_probable : R.string.recover);
             recoverButton.setEnabled(true);
             setStatusVisual(StatusTone.ERROR);
         } else {
@@ -383,8 +389,8 @@ public class MainActivity extends Activity {
                 return getString(R.string.recovery_unverified_timeout_detail);
             case SCANNER_ERROR:
                 return getString(R.string.scanner_error_detail, snapshot.scannerRc);
-            case SCANNER_UNCONFIRMED:
-                return getString(R.string.scanner_unconfirmed_detail);
+            case LOCKUP_PROBABLE:
+                return getString(R.string.lockup_probable_detail);
             default:
                 return getString(R.string.recovery_unverified_detail);
         }

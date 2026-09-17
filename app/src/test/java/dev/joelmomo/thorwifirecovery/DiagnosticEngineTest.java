@@ -49,8 +49,8 @@ public class DiagnosticEngineTest {
                 snapshot(true, true, false, 1, "", "").diagnosis());
     }
 
-    @Test public void scanningWithoutCarrierOrApsIsUnconfirmed() {
-        assertEquals(DiagnosticEngine.Diagnosis.SCANNER_UNCONFIRMED,
+    @Test public void persistentScanningWithoutCarrierOrApsIsProbableLockup() {
+        assertEquals(DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE,
                 snapshot(true, true, false, 0, "dest=ScanningState", "").diagnosis());
     }
 
