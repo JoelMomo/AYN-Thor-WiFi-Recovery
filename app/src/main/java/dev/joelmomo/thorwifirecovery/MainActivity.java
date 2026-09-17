@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
     private TextView statusDetail;
+    private TextView recoveryHint;
     private TextView statusInfoButton;
     private ProgressBar statusSpinner;
     private TextView themeToggle;
@@ -96,23 +97,14 @@ public class MainActivity extends Activity {
     }
 
     private void buildUi() {
-        final int bg = colorBg;
-        final int card = colorCard;
-        final int cardSoft = colorCardSoft;
-        final int outline = colorOutline;
-        final int accent = colorAccent;
-        final int textPrimary = colorTextPrimary;
-        final int textSecondary = colorTextSecondary;
-        final int textMuted = colorTextMuted;
         final boolean wide = getResources().getConfiguration().screenWidthDp >= 700;
-
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         LinearLayout root = column();
-        root.setPadding(dp(wide ? 24 : 20), dp(16), dp(wide ? 24 : 20), dp(18));
-        root.setBackgroundColor(bg);
-        scroll.addView(root);
+        root.setPadding(dp(wide ? 24 : 18), dp(14), dp(wide ? 24 : 18), dp(14));
+        root.setBackground(themeBackground());
+        scroll.addView(root, new ScrollView.LayoutParams(-1, -1));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -120,23 +112,20 @@ public class MainActivity extends Activity {
         logo.setImageResource(isLightTheme
                 ? R.drawable.ic_wifi_recovery_header_light
                 : R.drawable.ic_wifi_recovery_header_dark);
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(50), dp(50));
         logoParams.setMargins(0, 0, dp(14), 0);
         header.addView(logo, logoParams);
         LinearLayout headerText = column();
-        TextView title = text(getString(R.string.app_name), wide ? 26 : 24, textPrimary, true);
+        TextView title = text(getString(R.string.app_name), wide ? 27 : 24, colorTextPrimary, true);
         title.setLetterSpacing(-0.015f);
         headerText.addView(title);
-        TextView subtitle = text(getString(R.string.subtitle), 13, textSecondary, false);
-        subtitle.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
-        subtitle.setPadding(0, dp(2), 0, 0);
+        TextView subtitle = text(getString(R.string.subtitle), 13, colorTextSecondary, false);
+        subtitle.setPadding(0, dp(1), 0, 0);
         headerText.addView(subtitle);
-        header.addView(headerText, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        LinearLayout chips = new LinearLayout(this);
+        header.addView(headerText, new LinearLayout.LayoutParams(0, -2, 1f));        LinearLayout chips = new LinearLayout(this);
         chips.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-        chips.addView(chip(getString(R.string.chip_validated), colorChipValidated, accent));
-        chips.addView(chip(getString(R.string.chip_offline), colorChipNeutral, textSecondary), chipMargin());
+        chips.addView(chip(getString(R.string.chip_validated), colorChipValidated, colorAccent));
+        chips.addView(chip(getString(R.string.chip_offline), colorChipNeutral, colorTextSecondary), chipMargin());
         themeToggle = iconButton(isLightTheme ? "\u2600" : "\u263E", getString(R.string.theme_toggle));
         themeToggle.setOnClickListener(v -> { interactionFeedback(v); toggleTheme(); });
         if (wide) {
@@ -148,33 +137,32 @@ public class MainActivity extends Activity {
         root.addView(header);
         if (!wide) {
             chips.setGravity(Gravity.START);
-            chips.setPadding(dp(62), dp(8), 0, 0);
+            chips.setPadding(dp(64), dp(7), 0, 0);
             root.addView(chips);
         }
 
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
-        content.setGravity(Gravity.FILL_VERTICAL);
-        content.setPadding(0, dp(wide ? 14 : 16), 0, 0);
-        LinearLayout left = column();
-        LinearLayout right = column();
-        left.setGravity(Gravity.FILL_VERTICAL);
-        right.setGravity(Gravity.FILL_VERTICAL);
-        statusCard = new LinearLayout(this);
+        LinearLayout dashboard = column();
+        LinearLayout.LayoutParams dashboardParams = new LinearLayout.LayoutParams(-1, 0, 1f);
+        dashboardParams.setMargins(0, dp(12), 0, 0);
+        root.addView(dashboard, dashboardParams);
+
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setGravity(Gravity.TOP);
+        LinearLayout bottomRow = new LinearLayout(this);
+        bottomRow.setGravity(Gravity.TOP);        statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.HORIZONTAL);
-        currentStatusColor = accent;
-        currentStatusFill = card;
-        statusDrawable = new LiquidStatusDrawable(card, outline);
+        currentStatusColor = colorAccent;
+        currentStatusFill = colorCard;
+        statusDrawable = new LiquidStatusDrawable(colorCard, colorOutline);
         statusCard.setBackground(statusDrawable);
         statusRail = new View(this);
-        statusRail.setBackground(roundRect(accent, 999));
+        statusRail.setBackground(roundRect(colorAccent, 999));
         LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(dp(4), -1);
         railParams.setMargins(0, dp(12), 0, dp(12));
         statusCard.addView(statusRail, railParams);
 
         LinearLayout statusContent = column();
-        statusContent.setPadding(dp(18), dp(16), dp(18), dp(18));
-        statusContent.setGravity(Gravity.CENTER_VERTICAL);
+        statusContent.setPadding(dp(18), dp(15), dp(18), dp(16));
         LinearLayout statusHeader = new LinearLayout(this);
         statusHeader.setGravity(Gravity.CENTER_VERTICAL);
         statusHeader.addView(sectionLabel(getString(R.string.section_status)),
@@ -184,113 +172,132 @@ public class MainActivity extends Activity {
         statusInfoButton.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(statusDetail, statusInfoButton); });
         statusHeader.addView(statusInfoButton);
         statusContent.addView(statusHeader);
-        LinearLayout statusTitleRow = new LinearLayout(this);
-        statusTitleRow.setGravity(Gravity.CENTER_VERTICAL);
-        statusTitle = text(getString(R.string.status_checking), 22, accent, true);
-        statusTitle.setLetterSpacing(-0.012f);
-        statusTitle.setPadding(0, dp(6), 0, 0);
-        statusTitleRow.addView(statusTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        LinearLayout statusCenter = new LinearLayout(this);
+        statusCenter.setGravity(Gravity.CENTER_VERTICAL);
+        statusTitle = text(getString(R.string.status_checking), 23, colorAccent, true);
+        statusTitle.setLetterSpacing(-0.01f);
+        statusCenter.addView(statusTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         statusSpinner = new ProgressBar(this);
         statusSpinner.setIndeterminate(true);
-        statusSpinner.getIndeterminateDrawable().setTint(accent);
+        statusSpinner.getIndeterminateDrawable().setTint(colorAccent);
         statusSpinner.setVisibility(View.GONE);
-        statusTitleRow.addView(statusSpinner, spinnerParams());
-        statusContent.addView(statusTitleRow);
-        statusDetail = text("", 13, colorDetailText, false);
+        statusCenter.addView(statusSpinner, spinnerParams());
+        statusContent.addView(statusCenter, new LinearLayout.LayoutParams(-1, 0, 1f));        statusDetail = text("", 13, colorDetailText, false);
         statusDetail.setPadding(0, dp(8), 0, 0);
         statusDetail.setVisibility(View.GONE);
         statusContent.addView(statusDetail);
-        statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -2, 1f));
-        if (wide) left.addView(statusCard, weightedCard(0.56f, 12));
-        else left.addView(statusCard, matchWrap(0, 0, 0, 12));
-
-        LinearLayout tools = column();
-        tools.setPadding(dp(18), dp(14), dp(18), dp(16));
-        tools.setGravity(Gravity.CENTER_VERTICAL);
-        tools.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
-        tools.addView(sectionLabel(getString(R.string.section_tools)));
-        LinearLayout toolRow = new LinearLayout(this);
-        toolRow.setPadding(0, dp(8), 0, 0);
-        diagnoseButton = outlineButton(getString(R.string.diagnose));
-        reportButton = outlineButton(getString(R.string.copy_report));
-        reportButton.setEnabled(false);
-        diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
-        reportButton.setOnClickListener(v -> { interactionFeedback(v); copyDiagnosticReport(); });
-        toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
-        toolRow.addView(reportButton, weightedButton(dp(5), 0));
-        tools.addView(toolRow);
-        if (wide) left.addView(tools, weightedCard(0.44f, 0));
-        else left.addView(tools);
+        statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -1, 1f));
 
         LinearLayout recoveryCard = column();
-        recoveryCard.setPadding(dp(18), dp(16), dp(18), dp(18));
-        recoveryCard.setGravity(Gravity.CENTER_VERTICAL);
-        recoveryCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
+        recoveryCard.setPadding(dp(18), dp(15), dp(18), dp(16));
+        recoveryCard.setBackground(panelBackground());
         LinearLayout recoveryHeader = new LinearLayout(this);
         recoveryHeader.setGravity(Gravity.CENTER_VERTICAL);
-        recoveryHeader.addView(sectionLabel(getString(R.string.section_recovery)), new LinearLayout.LayoutParams(0, -2, 1f));
+        recoveryHeader.addView(sectionLabel(getString(R.string.section_recovery)),
+                new LinearLayout.LayoutParams(0, -2, 1f));
         TextView recoveryInfo = infoButton(getString(R.string.recovery_info));
+        recoveryInfo.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(recoveryHint, recoveryInfo); });
         recoveryHeader.addView(recoveryInfo);
         recoveryCard.addView(recoveryHeader);
-        TextView recoveryHint = text(getString(R.string.recovery_hint), 13, textSecondary, false);
-        recoveryHint.setPadding(0, dp(8), 0, dp(12));
+        recoveryHint = text(getString(R.string.recovery_hint), 13, colorTextSecondary, false);
+        recoveryHint.setPadding(0, dp(8), 0, dp(8));
         recoveryHint.setVisibility(View.GONE);
-        recoveryInfo.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(recoveryHint, recoveryInfo); });
         recoveryCard.addView(recoveryHint);
-        recoverButton = button(getString(R.string.recover), accent, colorButtonText);
+        recoverButton = button(getString(R.string.recover), colorAccent, colorButtonText);
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
-        recoveryCard.addView(recoverButton);
-        if (wide) right.addView(recoveryCard, weightedCard(0.50f, 12));
-        else right.addView(recoveryCard, matchWrap(0, 0, 0, 12));
-
-        LinearLayout detailsCard = column();
-        detailsCard.setPadding(dp(18), dp(14), dp(18), dp(14));
-        detailsCard.setGravity(Gravity.CENTER_VERTICAL);
-        detailsCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
-        detailsToggle = textButton(getString(R.string.details_show));
+        LinearLayout recoveryCenter = new LinearLayout(this);
+        recoveryCenter.setGravity(Gravity.CENTER);
+        recoveryCenter.addView(recoverButton, new LinearLayout.LayoutParams(-1, -2));
+        recoveryCard.addView(recoveryCenter, new LinearLayout.LayoutParams(-1, 0, 1f));        LinearLayout toolsCard = column();
+        toolsCard.setPadding(dp(16), dp(14), dp(16), dp(15));
+        toolsCard.setBackground(panelBackground());
+        toolsCard.addView(sectionLabel(getString(R.string.section_tools)));
+        LinearLayout toolRow = new LinearLayout(this);
+        toolRow.setGravity(Gravity.CENTER_VERTICAL);
+        toolRow.setPadding(0, dp(10), 0, 0);
+        diagnoseButton = toolButton(getString(R.string.diagnose), R.drawable.ic_tool_scan);
+        reportButton = toolButton(getString(R.string.copy_report_short), R.drawable.ic_tool_report);
+        reportButton.setEnabled(false);
+        detailsToggle = toolButton(getString(R.string.details_show_short), R.drawable.ic_tool_details);
+        diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
+        reportButton.setOnClickListener(v -> { interactionFeedback(v); copyDiagnosticReport(); });
         detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
-        detailsCard.addView(detailsToggle);
+        toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
+        toolRow.addView(reportButton, weightedButton(dp(5), dp(5)));
+        toolRow.addView(detailsToggle, weightedButton(dp(5), 0));
+        toolsCard.addView(toolRow, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        LinearLayout deviceCard = column();
+        deviceCard.setPadding(dp(16), dp(14), dp(16), dp(14));
+        deviceCard.setBackground(panelBackground());
+        deviceCard.addView(sectionLabel(getString(R.string.section_device)));
+        LinearLayout metrics = new LinearLayout(this);
+        metrics.setGravity(Gravity.CENTER_VERTICAL);
+        metrics.setPadding(0, dp(9), 0, 0);
+        detailFirmware = metricValue();
+        detailScanner = metricValue();
+        detailCarrier = metricValue();
+        detailAps = metricValue();
+        metrics.addView(metricTile(getString(R.string.detail_firmware), detailFirmware), metricParams(0, dp(4)));
+        metrics.addView(metricTile(getString(R.string.detail_scanner), detailScanner), metricParams(dp(4), dp(4)));
+        metrics.addView(metricTile(getString(R.string.detail_carrier), detailCarrier), metricParams(dp(4), dp(4)));
+        metrics.addView(metricTile(getString(R.string.detail_radio_aps), detailAps), metricParams(dp(4), 0));
+        deviceCard.addView(metrics, new LinearLayout.LayoutParams(-1, 0, 1f));
+
         detailsBody = column();
         detailsBody.setVisibility(View.GONE);
-        detailsBody.setPadding(0, dp(8), 0, 0);
-        detailFirmware = addDetail(detailsBody, R.string.detail_firmware, R.string.unknown_value);
+        detailsBody.setPadding(0, dp(7), 0, 0);
         detailSupport = addDetail(detailsBody, R.string.detail_support, R.string.detail_not_checked);
-        detailScanner = addDetail(detailsBody, R.string.detail_scanner, R.string.detail_not_checked);
-        detailCarrier = addDetail(detailsBody, R.string.detail_carrier, R.string.detail_not_checked);
-        detailAps = addDetail(detailsBody, R.string.detail_radio_aps, R.string.detail_not_checked);
         detailsBody.addView(divider());
-        TextView privacy = text(getString(R.string.privacy_note), 12, textMuted, false);
-        privacy.setPadding(0, dp(10), 0, dp(2));
+        TextView privacy = text(getString(R.string.privacy_note), 11, colorTextMuted, false);
+        privacy.setPadding(0, dp(8), 0, dp(2));
         detailsBody.addView(privacy);
         projectButton = textButton(getString(R.string.open_project));
         projectButton.setOnClickListener(v -> { interactionFeedback(v); openProject(); });
         detailsBody.addView(projectButton);
-        detailsCard.addView(detailsBody);
-        if (wide) right.addView(detailsCard, weightedCard(0.50f, 0));
-        else right.addView(detailsCard);
+        deviceCard.addView(detailsBody);
 
         if (wide) {
-            content.addView(left, new LinearLayout.LayoutParams(0, -1, 1.12f));
-            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, -1, 0.88f);
-            rightParams.setMargins(dp(12), 0, 0, 0);
-            content.addView(right, rightParams);
-        } else {
-            content.addView(left, new LinearLayout.LayoutParams(-1, -2));
-            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(-1, -2);
-            rightParams.setMargins(0, dp(14), 0, 0);
-            content.addView(right, rightParams);
+            LinearLayout.LayoutParams topLeft = new LinearLayout.LayoutParams(0, -1, 1.10f);
+            LinearLayout.LayoutParams topRight = new LinearLayout.LayoutParams(0, -1, 0.90f);
+            topLeft.setMargins(0, 0, dp(7), 0);
+            topRight.setMargins(dp(7), 0, 0, 0);
+            topRow.addView(statusCard, topLeft);
+            topRow.addView(recoveryCard, topRight);
+            LinearLayout.LayoutParams bottomLeft = new LinearLayout.LayoutParams(0, -1, 1.10f);
+            LinearLayout.LayoutParams bottomRight = new LinearLayout.LayoutParams(0, -1, 0.90f);
+            bottomLeft.setMargins(0, 0, dp(7), 0);
+            bottomRight.setMargins(dp(7), 0, 0, 0);
+            bottomRow.addView(toolsCard, bottomLeft);
+            bottomRow.addView(deviceCard, bottomRight);
+            dashboard.addView(topRow, new LinearLayout.LayoutParams(-1, 0, 1.15f));
+            LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(-1, 0, 0.85f);
+            bottomParams.setMargins(0, dp(12), 0, 0);
+            dashboard.addView(bottomRow, bottomParams);
+        } else {            topRow.setOrientation(LinearLayout.VERTICAL);
+            bottomRow.setOrientation(LinearLayout.VERTICAL);
+            topRow.addView(statusCard, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams recParams = new LinearLayout.LayoutParams(-1, -2);
+            recParams.setMargins(0, dp(12), 0, 0);
+            topRow.addView(recoveryCard, recParams);
+            bottomRow.addView(toolsCard, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams devParams = new LinearLayout.LayoutParams(-1, -2);
+            devParams.setMargins(0, dp(12), 0, 0);
+            bottomRow.addView(deviceCard, devParams);
+            dashboard.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(-1, -2);
+            bottomParams.setMargins(0, dp(12), 0, 0);
+            dashboard.addView(bottomRow, bottomParams);
         }
-        root.addView(content, wide
-                ? new LinearLayout.LayoutParams(-1, 0, 1f)
-                : new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout footer = new LinearLayout(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
-        footer.setPadding(dp(2), dp(12), dp(2), 0);
+        footer.setPadding(dp(2), dp(10), dp(2), 0);
         buildInfo = text(getString(R.string.build_info, BuildConfig.VERSION_NAME,
-                getString(R.string.unknown_value)), 10, textMuted, false);
-        TextView about = text(getString(R.string.about), 10, textMuted, false);
+                getString(R.string.unknown_value)), 10, colorTextMuted, false);
+        TextView about = text(getString(R.string.about), 10, colorTextMuted, false);
         if (wide) {
             footer.addView(buildInfo, new LinearLayout.LayoutParams(0, -2, 1f));
             about.setGravity(Gravity.END);
@@ -666,6 +673,40 @@ public class MainActivity extends Activity {
         currentStatusFill = targetFill;
     }
 
+    private GradientDrawable themeBackground() {
+        int[] colors = isLightTheme
+                ? new int[]{Color.rgb(248, 242, 231), Color.rgb(244, 239, 228), Color.rgb(236, 246, 241)}
+                : new int[]{Color.rgb(6, 17, 24), Color.rgb(8, 14, 21), Color.rgb(22, 14, 27)};
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
+        drawable.setGradientType(GradientDrawable.LINEAR_GRADIENT);
+        return drawable;
+    }
+
+    private GradientDrawable panelBackground() {
+        int start = isLightTheme ? Color.argb(244, 255, 253, 247) : Color.argb(235, 15, 25, 33);
+        int end = isLightTheme ? Color.argb(236, 249, 246, 238) : Color.argb(228, 12, 20, 28);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{start, end});
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), colorOutline);
+        return drawable;
+    }
+
+    private Button toolButton(String value, int iconRes) {
+        Button button = button(value, Color.TRANSPARENT, colorTextPrimary);
+        button.setTextSize(12);
+        button.setMinHeight(dp(58));
+        button.setPadding(dp(5), 0, dp(5), 0);
+        button.setBackground(roundRectStroke(
+                blendColors(colorCard, colorAccent, isLightTheme ? 0.02f : 0.035f),
+                colorOutline, 14, 1));
+        button.setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0);
+        android.graphics.drawable.Drawable icon = button.getCompoundDrawables()[0];
+        if (icon != null) icon.setTint(colorAccent);
+        button.setCompoundDrawablePadding(dp(7));
+        return button;
+    }
+
     private TextView sectionLabel(String value) {
         TextView view = text(value.toUpperCase(java.util.Locale.ROOT), 11,
                 colorTextMuted, true);
@@ -701,6 +742,35 @@ public class MainActivity extends Activity {
         return button;
     }
 
+    private TextView metricValue() {
+        TextView value = text("-", 12, colorTextPrimary, true);
+        value.setSingleLine(true);
+        value.setGravity(Gravity.CENTER_HORIZONTAL);
+        return value;
+    }
+
+    private LinearLayout metricTile(String label, TextView value) {
+        LinearLayout tile = column();
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(6), dp(7), dp(6), dp(7));
+        tile.setBackground(roundRectStroke(
+                blendColors(colorCardSoft, colorAccent, isLightTheme ? 0.015f : 0.03f),
+                colorOutline, 12, 1));
+        TextView labelView = text(label, 10, colorTextMuted, false);
+        labelView.setGravity(Gravity.CENTER);
+        labelView.setSingleLine(true);
+        tile.addView(labelView);
+        value.setPadding(0, dp(3), 0, 0);
+        tile.addView(value);
+        return tile;
+    }
+
+    private LinearLayout.LayoutParams metricParams(int left, int right) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -1, 1f);
+        params.setMargins(left, 0, right, 0);
+        return params;
+    }
+
     private LinearLayout.LayoutParams weightedButton(int left, int right) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
         params.setMargins(left, 0, right, 0);
@@ -729,20 +799,20 @@ public class MainActivity extends Activity {
     private void toggleDetails() {
         boolean show = detailsBody.getVisibility() != View.VISIBLE;
         detailsBody.setVisibility(show ? View.VISIBLE : View.GONE);
-        detailsToggle.setText(show ? R.string.details_hide : R.string.details_show);
+        detailsToggle.setText(show ? R.string.details_hide_short : R.string.details_show_short);
     }
 
     private void updateDetails(DiagnosticEngine.DeviceInfo info,
                                DiagnosticEngine.Snapshot snapshot) {
         String firmware = info == null || info.firmware == null || info.firmware.trim().isEmpty()
                 ? getString(R.string.unknown_value) : info.firmware.trim();
-        detailFirmware.setText(firmware);
+        detailFirmware.setText(firmware.contains(".377") ? ".377" : firmware);
         detailSupport.setText(info != null && DiagnosticEngine.isSupportedFirmware(info.firmware)
                 ? R.string.detail_supported : R.string.detail_not_supported);
         if (snapshot == null) {
-            detailScanner.setText(R.string.detail_not_checked);
-            detailCarrier.setText(R.string.detail_not_checked);
-            detailAps.setText(R.string.detail_not_checked);
+            detailScanner.setText("-");
+            detailCarrier.setText("-");
+            detailAps.setText("-");
             return;
         }
         detailScanner.setText(snapshot.scannerIdle() ? "IdleState"
