@@ -11,9 +11,9 @@ Temporary workaround for an intermittent Wi-Fi scanning lockup observed on the s
 
 This is **not an official AYN fix** and it does not modify the firmware.
 
-## Android app (alpha)
+## Android app (beta)
 
-The repository also contains an Android app in `app/`.
+The repository also contains an Android app in `app/`. Current beta: `0.3.0-beta1`.
 
 - UI language follows Android's system language; English and Spanish are included.
 - It uses AYN's built-in `PServerBinder` service for a fixed, narrow set of diagnostic/recovery commands.
@@ -22,13 +22,16 @@ The repository also contains an Android app in `app/`.
 - If the scanner is stuck in `ScanningState` while the Wi-Fi link is active, **Recover Wi-Fi** is enabled.
 - If the link is down, a low-level `wpa_cli` scan is used only as secondary evidence that the radio can still see APs.
 - `IdleState` or an unconfirmed signature keeps recovery disabled.
+- The exact validated `.377` build is checked before recovery can be enabled; unknown firmware fails closed.
+- After recovery, the app stores a pending-verification flag and checks the scanner automatically when Android returns.
+- The diagnosis engine is covered by unit tests for healthy, confirmed, unsupported, timeout, error and ambiguous states.
 - The app has no Internet permission and does not store Wi-Fi passwords. Diagnostic logs contain only state booleans/counts, not SSIDs or BSSIDs.
 
 This state-based check avoids using `cmd wifi start-scan` as a diagnostic action, because testing showed that initiating another framework scan can itself leave the scanner in `ScanningState` on the affected firmware.
 
 ### Signed APK
 
-The first public signed APK is `v0.2.0-alpha4`. Download it from the GitHub Releases page.
+The current beta is `v0.3.0-beta1`. Download the signed APK from the GitHub Releases page.
 
 - Release certificate SHA-256: `0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
 - The app requests no Internet permission and does not store Wi-Fi credentials.
@@ -45,13 +48,22 @@ Use this only when the Thor is affected by the same failure pattern:
 
 Do not use it for ordinary password, authentication, DHCP or "connected without Internet" problems.
 
-## Script installation
+## Installation
+
+### Android app
+
+1. Download the signed APK from the latest GitHub prerelease.
+2. Install and open **Thor Wi-Fi Recovery**.
+3. Tap **Check scanner** when Android shows the affected symptom.
+4. **Recover Wi-Fi** is enabled only when the validated lockup is confirmed.
+
+### Manual script fallback
 
 1. Download `Thor_WiFi_Recovery.sh`.
 2. Copy it to the Thor, for example to `Download`.
 3. Save any open game or application before running it.
 
-## Script usage
+## Manual script usage
 
 1. Open the AYN/Thor settings app.
 2. Open **Run script as Root**.
@@ -75,7 +87,7 @@ A small timestamp log is written to:
 
 `/sdcard/Download/ayn_thor_wifi_recovery.log`
 
-## What we observed
+## What I observed
 
 During the failure, Android's `WifiSingleScanStateMachine` entered `ScanningState` and did not return scan results. After restarting the Android framework, scan results resumed and the device reconnected normally.
 

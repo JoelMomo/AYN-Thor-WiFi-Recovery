@@ -48,7 +48,7 @@ The same recovery cycle also produced a successful scanner completion with 26 re
 
 ## App diagnostic rule
 
-The current alpha does not trigger an Android framework scan merely to diagnose the problem.
+The current beta does not trigger an Android framework scan merely to diagnose the problem.
 
 - Latest `WifiSingleScanStateMachine` transition ends in `IdleState`: scanner is responsive; recovery stays disabled.
 - Latest transition ends in `ScanningState` and `wlan0` carrier is active: validated lockup signature; recovery is enabled.
@@ -66,6 +66,19 @@ The public release APK was then installed on the device and re-checked. The inst
 `0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
 
 The release manifest declares no app permissions.
+
+
+## Beta1 validation
+
+`v0.3.0-beta1` adds exact firmware gating, explicit scanner error states, unit-tested diagnosis logic, and post-recovery verification.
+
+On the validated `.377` Thor, a framework scan was deliberately used to reproduce a persistent `ScanningState` while `wlan0` carrier remained active. The beta classified this as `LOCKUP_CONFIRMED` and enabled recovery.
+
+Recovery was then triggered from the app itself. The app persisted a pending-verification flag before executing `setprop ctl.restart zygote`. After Android returned, reopening the app automatically ran the read-only diagnostic, observed `IdleState`, displayed **Recovery verified**, and kept the recovery button disabled.
+
+A separate boot-time reproduction with `ScanningState`, no carrier, and no low-level AP evidence was deliberately classified as unconfirmed and recovery remained disabled. Wi-Fi-off behavior was also validated physically.
+
+The diagnosis engine currently has 13 local unit tests covering the supported build, healthy state, confirmed lockup paths, timeout/error handling, unsupported firmware, Wi-Fi disabled, missing `wlan0`, and ambiguous states.
 
 ## Limitations
 

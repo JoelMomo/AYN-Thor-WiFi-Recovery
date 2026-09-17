@@ -2,10 +2,10 @@ package dev.joelmomo.thorwifirecovery;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -13,22 +13,25 @@ import android.widget.TextView;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MainActivity extends Activity {
+    private static final String PREFS = "recovery_state";
+    private static final String KEY_RECOVERY_PENDING = "recovery_pending";
+
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
     private TextView statusDetail;
     private Button diagnoseButton;
     private Button recoverButton;
+    private boolean diagnosisAllowed = true;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(11,16,20));
         getWindow().setNavigationBarColor(Color.rgb(11,16,20));
         buildUi();
-        runProbe(false);
+        boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
+        runProbe(pending, pending);
     }
 
     @Override protected void onDestroy() {
@@ -63,7 +66,7 @@ public class MainActivity extends Activity {
         diagnoseButton = button(getString(R.string.diagnose), Color.rgb(35,49,57), Color.WHITE);
         recoverButton = button(getString(R.string.recover), Color.rgb(110,214,197), Color.rgb(4,33,30));
         recoverButton.setEnabled(false);
-        diagnoseButton.setOnClickListener(v -> runProbe(true));
+        diagnoseButton.setOnClickListener(v -> runProbe(true, false));
         recoverButton.setOnClickListener(v -> confirmRecovery());
         root.addView(diagnoseButton, matchWrap(0, 0, 0, 12));
         root.addView(recoverButton, matchWrap(0, 0, 0, 20));
@@ -76,54 +79,158 @@ public class MainActivity extends Activity {
         setContentView(scroll);
     }
 
-    private void runProbe(boolean forced) {
+    private void runProbe(boolean fullDiagnosis, boolean postRecovery) {
         setBusy(true);
-        statusTitle.setText(R.string.status_checking);
+        statusTitle.setText(postRecovery ? R.string.status_verifying : R.string.status_checking);
         statusDetail.setText("");
         worker.execute(() -> {
             try {
-                String output = forced ? ThorRootBridge.diagnoseScanner() : ThorRootBridge.probe();
-                int radioAps = forced ? countAccessPoints(section(output, "__RADIO_RESULTS__", null)) : -1;
-                boolean carrierUp = forced && "1".equals(section(output, "__CARRIER__", "__SCANNER_STATE__").trim());
-                String scannerLine = forced ? section(output, "__SCANNER_STATE__", "__RADIO_RESULTS__").trim() : "";
-                boolean scannerIdle = scannerLine.contains("dest=IdleState");
-                boolean scannerScanning = scannerLine.contains("dest=ScanningState");
-                String ssid = forced ? null : connectedSsid(output);
-                android.util.Log.i("ThorWiFiRecovery", "probe forced=" + forced
-                        + " scannerIdle=" + scannerIdle + " scannerScanning=" + scannerScanning
-                        + " radioAps=" + radioAps + " carrierUp=" + carrierUp);
-                runOnUiThread(() -> showProbeResult(forced, scannerIdle, scannerScanning, radioAps, ssid, carrierUp));
+                if (fullDiagnosis) {
+                    DiagnosticEngine.Snapshot snapshot =
+                            DiagnosticEngine.parseDiagnosis(ThorRootBridge.diagnoseScanner());
+                    android.util.Log.i("ThorWiFiRecovery",
+                            "diagnosis=" + snapshot.diagnosis()
+                                    + " carrierUp=" + snapshot.carrierUp
+                                    + " scannerRc=" + snapshot.scannerRc
+                                    + " radioAps=" + snapshot.radioAps);
+                    runOnUiThread(() -> showDiagnosis(snapshot, postRecovery));
+                } else {
+                    DiagnosticEngine.DeviceInfo info =
+                            DiagnosticEngine.parseProbe(ThorRootBridge.probe());
+                    runOnUiThread(() -> showProbe(info));
+                }
             } catch (Exception e) {
-                runOnUiThread(() -> {
-                    statusTitle.setText(R.string.status_unavailable);
-                    statusDetail.setText(getString(R.string.service_error, safeMessage(e)));
-                    recoverButton.setEnabled(false);
-                    setBusy(false);
-                });
+                runOnUiThread(() -> showServiceError(e, postRecovery));
             }
         });
     }
 
-    private void showProbeResult(boolean forced, boolean scannerIdle, boolean scannerScanning, int radioAps, String ssid, boolean carrierUp) {
-        if (!forced) {
+    private void showProbe(DiagnosticEngine.DeviceInfo info) {
+        recoverButton.setEnabled(false);
+        if (!DiagnosticEngine.isSupportedFirmware(info.firmware)) {
+            diagnosisAllowed = false;
+            statusTitle.setText(R.string.status_unsupported);
+            statusDetail.setText(getString(R.string.unsupported_firmware_detail, info.firmware));
+        } else if (!info.wifiEnabled) {
+            diagnosisAllowed = true;
+            statusTitle.setText(R.string.status_wifi_off);
+            statusDetail.setText(R.string.wifi_off_detail);
+        } else if (!info.wlanPresent) {
+            diagnosisAllowed = false;
+            statusTitle.setText(R.string.status_wlan_missing);
+            statusDetail.setText(R.string.wlan_missing_detail);
+        } else {
+            diagnosisAllowed = true;
             statusTitle.setText(R.string.status_ready);
-            statusDetail.setText(ssid != null ? getString(R.string.connected_to, ssid) : getString(R.string.service_ready_detail));
-            recoverButton.setEnabled(false);
-        } else if (scannerIdle) {
-            statusTitle.setText(R.string.status_ready);
-            statusDetail.setText(R.string.scanner_idle_detail);
-            recoverButton.setEnabled(false);
-        } else if (scannerScanning && (carrierUp || radioAps > 0)) {
-            statusTitle.setText(R.string.status_lockup);
-            statusDetail.setText(carrierUp
-                    ? getString(R.string.lockup_state_detail)
-                    : getString(R.string.lockup_detail, radioAps));
+            statusDetail.setText(getString(R.string.validated_firmware_detail, info.firmware));
+        }
+        setBusy(false);
+    }
+
+    private void showDiagnosis(DiagnosticEngine.Snapshot snapshot, boolean postRecovery) {
+        if (postRecovery) {
+            prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+            showPostRecovery(snapshot);
+            setBusy(false);
+            return;
+        }
+
+        DiagnosticEngine.Diagnosis diagnosis = snapshot.diagnosis();
+        recoverButton.setEnabled(false);
+        diagnosisAllowed = diagnosis != DiagnosticEngine.Diagnosis.UNSUPPORTED_FIRMWARE
+                && diagnosis != DiagnosticEngine.Diagnosis.WLAN_MISSING;
+
+        switch (diagnosis) {
+            case READY:
+                statusTitle.setText(R.string.status_ready);
+                statusDetail.setText(R.string.scanner_idle_detail);
+                break;
+            case LOCKUP_CONFIRMED:
+                statusTitle.setText(R.string.status_lockup);
+                statusDetail.setText(snapshot.carrierUp
+                        ? getString(R.string.lockup_state_detail)
+                        : getResources().getQuantityString(R.plurals.lockup_detail, snapshot.radioAps, snapshot.radioAps));
+                recoverButton.setEnabled(true);
+                break;
+            case UNSUPPORTED_FIRMWARE:
+                statusTitle.setText(R.string.status_unsupported);
+                statusDetail.setText(getString(
+                        R.string.unsupported_firmware_detail, snapshot.device.firmware));
+                break;
+            case WIFI_DISABLED:
+                statusTitle.setText(R.string.status_wifi_off);
+                statusDetail.setText(R.string.wifi_off_detail);
+                break;
+            case WLAN_MISSING:
+                statusTitle.setText(R.string.status_wlan_missing);
+                statusDetail.setText(R.string.wlan_missing_detail);
+                break;
+            case SCANNER_TIMEOUT:
+                statusTitle.setText(R.string.status_scanner_timeout);
+                statusDetail.setText(R.string.scanner_timeout_detail);
+                break;
+            case SCANNER_ERROR:
+                statusTitle.setText(R.string.status_scanner_error);
+                statusDetail.setText(getString(R.string.scanner_error_detail, snapshot.scannerRc));
+                break;
+            case SCANNER_UNCONFIRMED:
+                statusTitle.setText(R.string.status_scanner_unconfirmed);
+                statusDetail.setText(R.string.scanner_unconfirmed_detail);
+                break;
+            default:
+                statusTitle.setText(R.string.status_scanner_unknown);
+                statusDetail.setText(R.string.scanner_unknown_detail);
+                break;
+        }
+        setBusy(false);
+    }
+
+    private void showPostRecovery(DiagnosticEngine.Snapshot snapshot) {
+        DiagnosticEngine.Diagnosis diagnosis = snapshot.diagnosis();
+        recoverButton.setEnabled(false);
+        diagnosisAllowed = diagnosis != DiagnosticEngine.Diagnosis.UNSUPPORTED_FIRMWARE
+                && diagnosis != DiagnosticEngine.Diagnosis.WLAN_MISSING;
+
+        if (diagnosis == DiagnosticEngine.Diagnosis.READY) {
+            statusTitle.setText(R.string.status_recovery_success);
+            statusDetail.setText(R.string.recovery_success_detail);
+        } else if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED) {
+            statusTitle.setText(R.string.status_recovery_failed);
+            statusDetail.setText(R.string.recovery_failed_detail);
             recoverButton.setEnabled(true);
         } else {
-            statusTitle.setText(R.string.status_radio_empty);
-            statusDetail.setText(R.string.scanner_unknown_detail);
-            recoverButton.setEnabled(false);
+            statusTitle.setText(R.string.status_recovery_unverified);
+            statusDetail.setText(postRecoveryDetail(diagnosis, snapshot));
         }
+    }
+
+    private CharSequence postRecoveryDetail(DiagnosticEngine.Diagnosis diagnosis,
+                                            DiagnosticEngine.Snapshot snapshot) {
+        switch (diagnosis) {
+            case UNSUPPORTED_FIRMWARE:
+                return getString(R.string.unsupported_firmware_detail, snapshot.device.firmware);
+            case WIFI_DISABLED:
+                return getString(R.string.wifi_off_detail);
+            case WLAN_MISSING:
+                return getString(R.string.wlan_missing_detail);
+            case SCANNER_TIMEOUT:
+                return getString(R.string.recovery_unverified_timeout_detail);
+            case SCANNER_ERROR:
+                return getString(R.string.scanner_error_detail, snapshot.scannerRc);
+            case SCANNER_UNCONFIRMED:
+                return getString(R.string.scanner_unconfirmed_detail);
+            default:
+                return getString(R.string.recovery_unverified_detail);
+        }
+    }
+
+    private void showServiceError(Exception e, boolean postRecovery) {
+        if (postRecovery) prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+        statusTitle.setText(postRecovery
+                ? R.string.status_recovery_unverified
+                : R.string.status_unavailable);
+        statusDetail.setText(getString(R.string.service_error, safeMessage(e)));
+        recoverButton.setEnabled(false);
         setBusy(false);
     }
 
@@ -132,96 +239,87 @@ public class MainActivity extends Activity {
                 .setTitle(R.string.confirm_title)
                 .setMessage(R.string.confirm_body)
                 .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.run, (d, which) -> runRecovery())
+                .setPositiveButton(R.string.run, (dialog, which) -> runRecovery())
                 .show();
     }
-
     private void runRecovery() {
         setBusy(true);
+        boolean persisted = prefs().edit().putBoolean(KEY_RECOVERY_PENDING, true).commit();
+        if (!persisted) {
+            statusTitle.setText(R.string.status_unavailable);
+            statusDetail.setText(R.string.pending_state_error);
+            setBusy(false);
+            return;
+        }
+
         worker.execute(() -> {
-            try { ThorRootBridge.recover(); }
-            catch (Exception e) {
-                runOnUiThread(() -> {
-                    statusTitle.setText(R.string.status_unavailable);
-                    statusDetail.setText(getString(R.string.service_error, safeMessage(e)));
-                    setBusy(false);
-                });
+            try {
+                ThorRootBridge.recover();
+            } catch (Exception e) {
+                prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
+                runOnUiThread(() -> showServiceError(e, false));
             }
         });
     }
 
+    private SharedPreferences prefs() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE);
+    }
+
     private void setBusy(boolean busy) {
-        diagnoseButton.setEnabled(!busy);
+        diagnoseButton.setEnabled(!busy && diagnosisAllowed);
         if (busy) recoverButton.setEnabled(false);
-        diagnoseButton.setAlpha(busy ? 0.55f : 1f);
+        diagnoseButton.setAlpha(diagnoseButton.isEnabled() ? 1f : 0.55f);
         recoverButton.setAlpha(recoverButton.isEnabled() ? 1f : 0.55f);
     }
 
-    private static String section(String output, String startMarker, String endMarker) {
-        if (output == null) return "";
-        int start = output.indexOf(startMarker);
-        if (start < 0) return "";
-        start += startMarker.length();
-        int end = endMarker == null ? output.length() : output.indexOf(endMarker, start);
-        if (end < 0) end = output.length();
-        return output.substring(start, end);
-    }
-
-    private static int countAccessPoints(String output) {
-        Matcher m = Pattern.compile("(?i)(?:[0-9a-f]{2}:){5}[0-9a-f]{2}").matcher(output == null ? "" : output);
-        int count = 0;
-        while (m.find()) count++;
-        return count;
-    }
-
-    private static String connectedSsid(String output) {
-        Matcher m = Pattern.compile("connected to \\\"([^\\\"]+)\\\"").matcher(output == null ? "" : output);
-        return m.find() ? m.group(1) : null;
-    }
-
     private String safeMessage(Exception e) {
-        String s = e.getMessage();
-        return s == null || s.trim().isEmpty() ? e.getClass().getSimpleName() : s;
+        String value = e.getMessage();
+        return value == null || value.trim().isEmpty()
+                ? e.getClass().getSimpleName() : value;
     }
 
     private LinearLayout column() {
-        LinearLayout l = new LinearLayout(this);
-        l.setOrientation(LinearLayout.VERTICAL);
-        return l;
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        return layout;
     }
 
     private TextView text(String value, int sp, int color, boolean bold) {
-        TextView v = new TextView(this);
-        v.setText(value);
-        v.setTextSize(sp);
-        v.setTextColor(color);
-        if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        v.setLineSpacing(0, 1.12f);
-        return v;
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextSize(sp);
+        view.setTextColor(color);
+        if (bold) {
+            view.setTypeface(android.graphics.Typeface.DEFAULT,
+                    android.graphics.Typeface.BOLD);
+        }
+        view.setLineSpacing(0, 1.12f);
+        return view;
     }
 
     private Button button(String value, int background, int foreground) {
-        Button b = new Button(this);
-        b.setText(value);
-        b.setTextSize(16);
-        b.setTextColor(foreground);
-        b.setAllCaps(false);
-        b.setMinHeight(dp(54));
-        b.setBackground(roundRect(background, 16));
-        return b;
+        Button button = new Button(this);
+        button.setText(value);
+        button.setTextSize(16);
+        button.setTextColor(foreground);
+        button.setAllCaps(false);
+        button.setMinHeight(dp(54));
+        button.setBackground(roundRect(background, 16));
+        return button;
     }
 
     private GradientDrawable roundRect(int color, int radiusDp) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(color);
-        d.setCornerRadius(dp(radiusDp));
-        return d;
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
     }
 
     private LinearLayout.LayoutParams matchWrap(int left, int top, int right, int bottom) {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-        p.setMargins(dp(left), dp(top), dp(right), dp(bottom));
-        return p;
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(dp(left), dp(top), dp(right), dp(bottom));
+        return params;
     }
 
     private int dp(int value) {

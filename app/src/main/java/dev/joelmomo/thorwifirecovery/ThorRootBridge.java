@@ -2,24 +2,62 @@ package dev.joelmomo.thorwifirecovery;
 
 import java.nio.charset.StandardCharsets;
 
-/** Minimal fixed-command bridge to AYN's built-in PServerBinder root service. Binder invocation pattern adapted from parthi1994/ayn-thor-wifi-recovery (MIT); see THIRD_PARTY_NOTICES.md. */
+/**
+ * Minimal fixed-command bridge to AYN's built-in PServerBinder root service.
+ * Binder invocation pattern adapted from parthi1994/ayn-thor-wifi-recovery (MIT);
+ * see THIRD_PARTY_NOTICES.md.
+ */
 final class ThorRootBridge {
     private ThorRootBridge() {}
 
     static String probe() throws Exception {
-        return execute("cmd wifi status");
+        String firmware = execute("getprop ro.build.display.id");
+        String wifiEnabled = execute(
+                "cmd wifi status | head -n 1 | grep -q 'Wifi is enabled' && echo 1 || echo 0");
+        String wlanPresent = execute(
+                "if [ -d /sys/class/net/wlan0 ]; then echo 1; else echo 0; fi");
+        return "__FIRMWARE__\n" + firmware
+                + "\n__WIFI_ENABLED__\n" + wifiEnabled
+                + "\n__WLAN_PRESENT__\n" + wlanPresent;
     }
 
     static String diagnoseScanner() throws Exception {
-        String carrier = execute("cat /sys/class/net/wlan0/carrier 2>/dev/null");
-        String scannerState = execute("timeout 5 dumpsys wifiscanner | sed -n '/WifiSingleScanStateMachine:/,/^$/p' | grep 'dest=' | tail -n 1");
+        String base = probe();
+        DiagnosticEngine.DeviceInfo device = DiagnosticEngine.parseProbe(base);
+        String carrier = "0";
+        String scannerRc = "-1";
+        String scannerState = "";
         String radioResults = "";
-        if (scannerState.contains("dest=ScanningState") && !"1".equals(carrier.trim())) {
-            execute("/vendor/bin/wpa_cli -i wlan0 scan");
-            Thread.sleep(4000);
-            radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+
+        if (device.wlanPresent) {
+            carrier = execute("cat /sys/class/net/wlan0/carrier 2>/dev/null").trim();
         }
-        return "__CARRIER__\n" + carrier
+
+        if (DiagnosticEngine.isSupportedFirmware(device.firmware)
+                && device.wifiEnabled && device.wlanPresent) {
+            scannerState = execute(
+                    "timeout 5 dumpsys wifiscanner "
+                    + "| sed -n '/WifiSingleScanStateMachine:/,/^$/p' "
+                    + "| grep 'dest=' | tail -n 1").trim();
+            if (scannerState.isEmpty()) {
+                scannerRc = execute(
+                        "timeout 5 dumpsys wifiscanner >/dev/null 2>&1; echo $?").trim();
+            } else {
+                scannerRc = "0";
+            }
+
+            boolean scannerScanning = scannerState.contains("dest=ScanningState");
+            boolean carrierUp = "1".equals(carrier);
+            if (scannerScanning && !carrierUp) {
+                execute("/vendor/bin/wpa_cli -i wlan0 scan");
+                Thread.sleep(4000);
+                radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+            }
+        }
+
+        return base
+                + "\n__CARRIER__\n" + carrier
+                + "\n__SCANNER_RC__\n" + scannerRc
                 + "\n__SCANNER_STATE__\n" + scannerState
                 + "\n__RADIO_RESULTS__\n" + radioResults;
     }
@@ -27,6 +65,7 @@ final class ThorRootBridge {
     static void recover() throws Exception {
         execute("setprop ctl.restart zygote");
     }
+
     private static String execute(String command) throws Exception {
         Class<?> parcelClass = Class.forName("android.os.Parcel");
         Object request = parcelClass.getMethod("obtain").invoke(null);
@@ -49,4 +88,3 @@ final class ThorRootBridge {
         }
     }
 }
-

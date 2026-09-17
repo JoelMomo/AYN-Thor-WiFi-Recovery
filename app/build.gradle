@@ -24,8 +24,8 @@ android {
         applicationId 'dev.joelmomo.thorwifirecovery'
         minSdk 26
         targetSdk 33
-        versionCode 203
-        versionName '0.2.0-alpha4'
+        versionCode 300
+        versionName '0.3.0-beta1'
     }
     signingConfigs {
         release { cfg ->
@@ -47,4 +47,8 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
 }
