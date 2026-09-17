@@ -1,5 +1,7 @@
 package dev.joelmomo.thorwifirecovery;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -12,6 +14,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -28,6 +31,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "recovery_state";
     private static final String KEY_RECOVERY_PENDING = "recovery_pending";
     private static final String KEY_LIGHT_THEME = "light_theme";
+    private static final String KEY_THEME_TRANSITION = "theme_transition";
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private TextView statusTitle;
@@ -56,17 +60,26 @@ public class MainActivity extends Activity {
     private int colorTextPrimary, colorTextSecondary, colorTextMuted, colorButtonText;
     private int colorChipValidated, colorChipNeutral, colorDetailText;
     private int toneOk, toneRecovery, toneWarning, toneError, toneNeutral;
+    private int currentStatusColor, currentStatusFill;
+    private ValueAnimator statusAnimator;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         isLightTheme = prefs().getBoolean(KEY_LIGHT_THEME, false);
+        boolean animateTheme = prefs().getBoolean(KEY_THEME_TRANSITION, false);
+        if (animateTheme) prefs().edit().remove(KEY_THEME_TRANSITION).apply();
         applyPalette();
+        View decor = getWindow().getDecorView();
+        decor.setAlpha(animateTheme ? 0f : 1f);
         getWindow().setStatusBarColor(colorBg);
         getWindow().setNavigationBarColor(colorBg);
         getWindow().getDecorView().setSystemUiVisibility(isLightTheme
                 ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 : 0);
         buildUi();
+        if (animateTheme) {
+            decor.animate().alpha(1f).setDuration(280).start();
+        }
         boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
         runProbe(pending, pending);
     }
@@ -115,7 +128,7 @@ public class MainActivity extends Activity {
         chips.addView(chip(getString(R.string.chip_validated), colorChipValidated, accent));
         chips.addView(chip(getString(R.string.chip_offline), colorChipNeutral, textSecondary), chipMargin());
         themeToggle = iconButton(isLightTheme ? "\u2600" : "\u263E", getString(R.string.theme_toggle));
-        themeToggle.setOnClickListener(v -> toggleTheme());
+        themeToggle.setOnClickListener(v -> { interactionFeedback(v); toggleTheme(); });
         if (wide) {
             header.addView(chips);
             header.addView(themeToggle, iconMargin());
@@ -137,7 +150,9 @@ public class MainActivity extends Activity {
         LinearLayout right = column();
         statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.HORIZONTAL);
-        statusCard.setBackground(roundRectStroke(card, outline, 18, 1));
+        currentStatusColor = accent;
+        currentStatusFill = card;
+        statusCard.setBackground(statusGradient(card));
         statusRail = new View(this);
         statusRail.setBackground(roundRect(accent, 999));
         LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(dp(4), -1);
@@ -146,7 +161,15 @@ public class MainActivity extends Activity {
 
         LinearLayout statusContent = column();
         statusContent.setPadding(dp(18), dp(14), dp(18), dp(16));
-        statusContent.addView(sectionLabel(getString(R.string.section_status)));
+        LinearLayout statusHeader = new LinearLayout(this);
+        statusHeader.setGravity(Gravity.CENTER_VERTICAL);
+        statusHeader.addView(sectionLabel(getString(R.string.section_status)),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        statusInfoButton = infoButton(getString(R.string.status_info));
+        statusInfoButton.setVisibility(View.GONE);
+        statusInfoButton.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(statusDetail, statusInfoButton); });
+        statusHeader.addView(statusInfoButton);
+        statusContent.addView(statusHeader);
         LinearLayout statusTitleRow = new LinearLayout(this);
         statusTitleRow.setGravity(Gravity.CENTER_VERTICAL);
         statusTitle = text(getString(R.string.status_checking), 21, accent, true);
@@ -157,10 +180,6 @@ public class MainActivity extends Activity {
         statusSpinner.getIndeterminateDrawable().setTint(accent);
         statusSpinner.setVisibility(View.GONE);
         statusTitleRow.addView(statusSpinner, spinnerParams());
-        statusInfoButton = infoButton(getString(R.string.status_info));
-        statusInfoButton.setVisibility(View.GONE);
-        statusInfoButton.setOnClickListener(v -> toggleInfo(statusDetail, statusInfoButton));
-        statusTitleRow.addView(statusInfoButton, iconMargin());
         statusContent.addView(statusTitleRow);
         statusDetail = text("", 13, colorDetailText, false);
         statusDetail.setPadding(0, dp(8), 0, 0);
@@ -177,15 +196,15 @@ public class MainActivity extends Activity {
         diagnoseButton = outlineButton(getString(R.string.diagnose));
         reportButton = outlineButton(getString(R.string.copy_report));
         reportButton.setEnabled(false);
-        diagnoseButton.setOnClickListener(v -> runProbe(true, false));
-        reportButton.setOnClickListener(v -> copyDiagnosticReport());
+        diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
+        reportButton.setOnClickListener(v -> { interactionFeedback(v); copyDiagnosticReport(); });
         toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
         toolRow.addView(reportButton, weightedButton(dp(5), 0));
         tools.addView(toolRow);
         left.addView(tools);
 
         LinearLayout recoveryCard = column();
-        recoveryCard.setPadding(dp(18), dp(15), dp(18), dp(17));
+        recoveryCard.setPadding(dp(18), dp(14), dp(18), dp(17));
         recoveryCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
         LinearLayout recoveryHeader = new LinearLayout(this);
         recoveryHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -196,11 +215,11 @@ public class MainActivity extends Activity {
         TextView recoveryHint = text(getString(R.string.recovery_hint), 13, textSecondary, false);
         recoveryHint.setPadding(0, dp(8), 0, dp(12));
         recoveryHint.setVisibility(View.GONE);
-        recoveryInfo.setOnClickListener(v -> toggleInfo(recoveryHint, recoveryInfo));
+        recoveryInfo.setOnClickListener(v -> { interactionFeedback(v); toggleInfo(recoveryHint, recoveryInfo); });
         recoveryCard.addView(recoveryHint);
         recoverButton = button(getString(R.string.recover), accent, colorButtonText);
         recoverButton.setEnabled(false);
-        recoverButton.setOnClickListener(v -> confirmRecovery());
+        recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
         recoveryCard.addView(recoverButton);
         right.addView(recoveryCard, matchWrap(0, 0, 0, 12));
 
@@ -208,7 +227,7 @@ public class MainActivity extends Activity {
         detailsCard.setPadding(dp(18), dp(8), dp(18), dp(10));
         detailsCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
         detailsToggle = textButton(getString(R.string.details_show));
-        detailsToggle.setOnClickListener(v -> toggleDetails());
+        detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
         detailsCard.addView(detailsToggle);
         detailsBody = column();
         detailsBody.setVisibility(View.GONE);
@@ -223,7 +242,7 @@ public class MainActivity extends Activity {
         privacy.setPadding(0, dp(10), 0, dp(2));
         detailsBody.addView(privacy);
         projectButton = textButton(getString(R.string.open_project));
-        projectButton.setOnClickListener(v -> openProject());
+        projectButton.setOnClickListener(v -> { interactionFeedback(v); openProject(); });
         detailsBody.addView(projectButton);
         detailsCard.addView(detailsBody);
         right.addView(detailsCard);
@@ -524,41 +543,72 @@ public class MainActivity extends Activity {
 
     private void applyPalette() {
         if (isLightTheme) {
-            colorBg=Color.rgb(244,247,248); colorCard=Color.WHITE; colorCardSoft=Color.rgb(249,251,251); colorOutline=Color.rgb(211,223,227); colorAccent=Color.rgb(25,126,114); colorTextPrimary=Color.rgb(20,35,40); colorTextSecondary=Color.rgb(78,99,107); colorTextMuted=Color.rgb(111,131,138); colorButtonText=Color.rgb(5,43,39); colorChipValidated=Color.rgb(222,244,239); colorChipNeutral=Color.rgb(231,237,239); colorDetailText=Color.rgb(67,84,91); toneOk=Color.rgb(22,135,120); toneRecovery=Color.rgb(190,91,56); toneWarning=Color.rgb(156,100,7); toneError=Color.rgb(190,58,58); toneNeutral=Color.rgb(88,116,127);
+            colorBg=Color.rgb(246,242,232); colorCard=Color.rgb(255,253,247); colorCardSoft=Color.rgb(251,247,238); colorOutline=Color.rgb(222,213,197); colorAccent=Color.rgb(25,126,114); colorTextPrimary=Color.rgb(20,35,40); colorTextSecondary=Color.rgb(78,99,107); colorTextMuted=Color.rgb(111,131,138); colorButtonText=Color.rgb(5,43,39); colorChipValidated=Color.rgb(225,242,235); colorChipNeutral=Color.rgb(238,232,219); colorDetailText=Color.rgb(67,84,91); toneOk=Color.rgb(22,135,120); toneRecovery=Color.rgb(190,91,56); toneWarning=Color.rgb(156,100,7); toneError=Color.rgb(190,58,58); toneNeutral=Color.rgb(88,116,127);
         } else {
             colorBg=Color.rgb(9,13,16); colorCard=Color.rgb(17,24,29); colorCardSoft=Color.rgb(13,19,23); colorOutline=Color.rgb(38,52,60); colorAccent=Color.rgb(119,216,199); colorTextPrimary=Color.rgb(242,246,247); colorTextSecondary=Color.rgb(170,182,188); colorTextMuted=Color.rgb(116,132,140); colorButtonText=Color.rgb(4,33,30); colorChipValidated=Color.rgb(24,56,51); colorChipNeutral=Color.rgb(31,42,48); colorDetailText=Color.rgb(202,211,215); toneOk=Color.rgb(110,214,197); toneRecovery=Color.rgb(255,151,118); toneWarning=Color.rgb(238,190,103); toneError=Color.rgb(255,132,132); toneNeutral=Color.rgb(157,184,198);
         }
     }
 
-    private void toggleTheme() { prefs().edit().putBoolean(KEY_LIGHT_THEME, !isLightTheme).apply(); recreate(); }
-    private void toggleInfo(View body, TextView button) { boolean show=body.getVisibility()!=View.VISIBLE; body.setVisibility(show?View.VISIBLE:View.GONE); }
+    private void toggleTheme() {
+        prefs().edit()
+                .putBoolean(KEY_LIGHT_THEME, !isLightTheme)
+                .putBoolean(KEY_THEME_TRANSITION, true)
+                .apply();
+        getWindow().getDecorView().animate().alpha(0f).setDuration(180)
+                .withEndAction(this::recreate).start();
+    }
+
+    private void toggleInfo(View body, TextView button) {
+        boolean show = body.getVisibility() != View.VISIBLE;
+        if (show) {
+            body.setAlpha(0f);
+            body.setVisibility(View.VISIBLE);
+            body.animate().alpha(1f).setDuration(160).start();
+        } else {
+            body.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+                body.setVisibility(View.GONE);
+                body.setAlpha(1f);
+            }).start();
+        }
+    }
+    private void interactionFeedback(View view) {
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+    }
+
     private TextView infoButton(String description) { TextView v=iconButton("i",description); v.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD); return v; }
-    private TextView iconButton(String symbol,String description) { TextView v=text(symbol,17,colorTextPrimary,false); v.setGravity(Gravity.CENTER); v.setContentDescription(description); v.setBackground(roundRectStroke(Color.TRANSPARENT,colorOutline,999,1)); v.setMinWidth(dp(34)); v.setMinHeight(dp(34)); return v; }
+    private TextView iconButton(String symbol,String description) { TextView v=text(symbol,17,colorTextPrimary,false); v.setGravity(Gravity.CENTER); v.setContentDescription(description); v.setBackground(roundRectStroke(Color.TRANSPARENT,colorOutline,999,1)); v.setMinWidth(dp(34)); v.setMinHeight(dp(34)); v.setHapticFeedbackEnabled(true); v.setSoundEffectsEnabled(true); return v; }
     private LinearLayout.LayoutParams iconMargin() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(34),dp(34)); p.setMargins(dp(10),0,0,0); return p; }
     private LinearLayout.LayoutParams spinnerParams() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30)); p.setMargins(dp(10),0,0,0); return p; }
 
     private enum StatusTone { OK, RECOVERY, WARNING, ERROR, NEUTRAL }
 
     private void setStatusVisual(StatusTone tone) {
-        int titleColor;
+        int targetColor;
         switch (tone) {
-            case OK:
-                titleColor = toneOk;
-                break;
-            case RECOVERY:
-                titleColor = toneRecovery;
-                break;
-            case WARNING:
-                titleColor = toneWarning;
-                break;
-            case ERROR:
-                titleColor = toneError;
-                break;
-            default:
-                titleColor = toneNeutral;
+            case OK: targetColor = toneOk; break;
+            case RECOVERY: targetColor = toneRecovery; break;
+            case WARNING: targetColor = toneWarning; break;
+            case ERROR: targetColor = toneError; break;
+            default: targetColor = toneNeutral;
         }
-        statusTitle.setTextColor(titleColor);
-        statusRail.setBackground(roundRect(titleColor, 999));
+        int targetFill = blendColors(colorCard, targetColor, isLightTheme ? 0.10f : 0.12f);
+        if (statusAnimator != null) statusAnimator.cancel();
+        final int startColor = currentStatusColor;
+        final int startFill = currentStatusFill;
+        final ArgbEvaluator evaluator = new ArgbEvaluator();
+        statusAnimator = ValueAnimator.ofFloat(0f, 1f);
+        statusAnimator.setDuration(340);
+        statusAnimator.addUpdateListener(animation -> {
+            float f = (float) animation.getAnimatedValue();
+            int color = (int) evaluator.evaluate(f, startColor, targetColor);
+            int fill = (int) evaluator.evaluate(f, startFill, targetFill);
+            statusTitle.setTextColor(color);
+            statusRail.setBackground(roundRect(color, 999));
+            statusCard.setBackground(statusGradient(fill));
+        });
+        statusAnimator.start();
+        currentStatusColor = targetColor;
+        currentStatusFill = targetFill;
     }
 
     private TextView sectionLabel(String value) {
@@ -646,6 +696,22 @@ public class MainActivity extends Activity {
         detailAps.setText(String.valueOf(snapshot.radioAps));
     }
 
+    private int blendColors(int base, int tint, float amount) {
+        return Color.rgb(
+                Math.round(Color.red(base) * (1f - amount) + Color.red(tint) * amount),
+                Math.round(Color.green(base) * (1f - amount) + Color.green(tint) * amount),
+                Math.round(Color.blue(base) * (1f - amount) + Color.blue(tint) * amount));
+    }
+
+    private GradientDrawable statusGradient(int leftColor) {
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{leftColor, colorCard});
+        drawable.setCornerRadius(dp(18));
+        drawable.setStroke(dp(1), colorOutline);
+        return drawable;
+    }
+
     private GradientDrawable roundRectStroke(int fill, int stroke, int radiusDp, int strokeDp) {
         GradientDrawable drawable = roundRect(fill, radiusDp);
         drawable.setStroke(dp(strokeDp), stroke);
@@ -685,6 +751,8 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setMinHeight(dp(54));
         button.setBackground(roundRect(background, 16));
+        button.setHapticFeedbackEnabled(true);
+        button.setSoundEffectsEnabled(true);
         return button;
     }
 
