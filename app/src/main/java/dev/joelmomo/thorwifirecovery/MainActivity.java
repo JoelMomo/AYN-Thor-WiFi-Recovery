@@ -83,10 +83,11 @@ public class MainActivity extends Activity {
         worker.execute(() -> {
             try {
                 String output = forced ? ThorRootBridge.forceScan() : ThorRootBridge.probe();
-                android.util.Log.i("ThorWiFiRecovery", "probe forced=" + forced + " output=\n" + output);
                 int androidAps = forced ? countAccessPoints(section(output, "__ANDROID_RESULTS__", "__RADIO_RESULTS__")) : countAccessPoints(output);
                 int radioAps = forced ? countAccessPoints(section(output, "__RADIO_RESULTS__", null)) : -1;
                 String ssid = connectedSsid(output);
+                android.util.Log.i("ThorWiFiRecovery", "probe forced=" + forced
+                        + " androidAps=" + androidAps + " radioAps=" + radioAps);
                 runOnUiThread(() -> showProbeResult(forced, androidAps, radioAps, ssid));
             } catch (Exception e) {
                 runOnUiThread(() -> {

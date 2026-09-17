@@ -10,7 +10,7 @@ android {
         applicationId 'dev.joelmomo.thorwifirecovery'
         minSdk 26
         targetSdk 33
-        versionCode 201
-        versionName '0.2.0-alpha2'
+        versionCode 202
+        versionName '0.2.0-alpha3'
     }
 }
