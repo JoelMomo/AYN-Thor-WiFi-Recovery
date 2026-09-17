@@ -10,12 +10,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -62,6 +69,7 @@ public class MainActivity extends Activity {
     private int toneOk, toneRecovery, toneWarning, toneError, toneNeutral;
     private int currentStatusColor, currentStatusFill;
     private ValueAnimator statusAnimator;
+    private LiquidStatusDrawable statusDrawable;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -77,9 +85,7 @@ public class MainActivity extends Activity {
                 ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
                 : 0);
         buildUi();
-        if (animateTheme) {
-            decor.animate().alpha(1f).setDuration(280).start();
-        }
+        if (animateTheme) runThemeReveal(decor);
         boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
         runProbe(pending, pending);
     }
@@ -111,14 +117,18 @@ public class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ic_wifi_recovery_foreground);
+        logo.setImageResource(isLightTheme
+                ? R.drawable.ic_wifi_recovery_header_light
+                : R.drawable.ic_wifi_recovery_header_dark);
         LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(48), dp(48));
         logoParams.setMargins(0, 0, dp(14), 0);
         header.addView(logo, logoParams);
         LinearLayout headerText = column();
-        TextView title = text(getString(R.string.app_name), wide ? 25 : 24, textPrimary, true);
+        TextView title = text(getString(R.string.app_name), wide ? 26 : 24, textPrimary, true);
+        title.setLetterSpacing(-0.015f);
         headerText.addView(title);
         TextView subtitle = text(getString(R.string.subtitle), 13, textSecondary, false);
+        subtitle.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
         subtitle.setPadding(0, dp(2), 0, 0);
         headerText.addView(subtitle);
         header.addView(headerText, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -144,15 +154,18 @@ public class MainActivity extends Activity {
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
-        content.setGravity(Gravity.TOP);
+        content.setGravity(Gravity.FILL_VERTICAL);
         content.setPadding(0, dp(wide ? 14 : 16), 0, 0);
         LinearLayout left = column();
         LinearLayout right = column();
+        left.setGravity(Gravity.FILL_VERTICAL);
+        right.setGravity(Gravity.FILL_VERTICAL);
         statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.HORIZONTAL);
         currentStatusColor = accent;
         currentStatusFill = card;
-        statusCard.setBackground(statusGradient(card));
+        statusDrawable = new LiquidStatusDrawable(card, outline);
+        statusCard.setBackground(statusDrawable);
         statusRail = new View(this);
         statusRail.setBackground(roundRect(accent, 999));
         LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(dp(4), -1);
@@ -160,7 +173,8 @@ public class MainActivity extends Activity {
         statusCard.addView(statusRail, railParams);
 
         LinearLayout statusContent = column();
-        statusContent.setPadding(dp(18), dp(14), dp(18), dp(16));
+        statusContent.setPadding(dp(18), dp(16), dp(18), dp(18));
+        statusContent.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout statusHeader = new LinearLayout(this);
         statusHeader.setGravity(Gravity.CENTER_VERTICAL);
         statusHeader.addView(sectionLabel(getString(R.string.section_status)),
@@ -172,7 +186,8 @@ public class MainActivity extends Activity {
         statusContent.addView(statusHeader);
         LinearLayout statusTitleRow = new LinearLayout(this);
         statusTitleRow.setGravity(Gravity.CENTER_VERTICAL);
-        statusTitle = text(getString(R.string.status_checking), 21, accent, true);
+        statusTitle = text(getString(R.string.status_checking), 22, accent, true);
+        statusTitle.setLetterSpacing(-0.012f);
         statusTitle.setPadding(0, dp(6), 0, 0);
         statusTitleRow.addView(statusTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         statusSpinner = new ProgressBar(this);
@@ -186,10 +201,13 @@ public class MainActivity extends Activity {
         statusDetail.setVisibility(View.GONE);
         statusContent.addView(statusDetail);
         statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -2, 1f));
-        left.addView(statusCard, matchWrap(0, 0, 0, 12));
+        if (wide) left.addView(statusCard, weightedCard(0.56f, 12));
+        else left.addView(statusCard, matchWrap(0, 0, 0, 12));
 
         LinearLayout tools = column();
-        tools.setPadding(dp(2), 0, dp(2), 0);
+        tools.setPadding(dp(18), dp(14), dp(18), dp(16));
+        tools.setGravity(Gravity.CENTER_VERTICAL);
+        tools.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
         tools.addView(sectionLabel(getString(R.string.section_tools)));
         LinearLayout toolRow = new LinearLayout(this);
         toolRow.setPadding(0, dp(8), 0, 0);
@@ -201,10 +219,12 @@ public class MainActivity extends Activity {
         toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
         toolRow.addView(reportButton, weightedButton(dp(5), 0));
         tools.addView(toolRow);
-        left.addView(tools);
+        if (wide) left.addView(tools, weightedCard(0.44f, 0));
+        else left.addView(tools);
 
         LinearLayout recoveryCard = column();
-        recoveryCard.setPadding(dp(18), dp(14), dp(18), dp(17));
+        recoveryCard.setPadding(dp(18), dp(16), dp(18), dp(18));
+        recoveryCard.setGravity(Gravity.CENTER_VERTICAL);
         recoveryCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
         LinearLayout recoveryHeader = new LinearLayout(this);
         recoveryHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -221,10 +241,12 @@ public class MainActivity extends Activity {
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
         recoveryCard.addView(recoverButton);
-        right.addView(recoveryCard, matchWrap(0, 0, 0, 12));
+        if (wide) right.addView(recoveryCard, weightedCard(0.50f, 12));
+        else right.addView(recoveryCard, matchWrap(0, 0, 0, 12));
 
         LinearLayout detailsCard = column();
-        detailsCard.setPadding(dp(18), dp(8), dp(18), dp(10));
+        detailsCard.setPadding(dp(18), dp(14), dp(18), dp(14));
+        detailsCard.setGravity(Gravity.CENTER_VERTICAL);
         detailsCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
         detailsToggle = textButton(getString(R.string.details_show));
         detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
@@ -245,11 +267,12 @@ public class MainActivity extends Activity {
         projectButton.setOnClickListener(v -> { interactionFeedback(v); openProject(); });
         detailsBody.addView(projectButton);
         detailsCard.addView(detailsBody);
-        right.addView(detailsCard);
+        if (wide) right.addView(detailsCard, weightedCard(0.50f, 0));
+        else right.addView(detailsCard);
 
         if (wide) {
-            content.addView(left, new LinearLayout.LayoutParams(0, -2, 1.12f));
-            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, -2, 0.88f);
+            content.addView(left, new LinearLayout.LayoutParams(0, -1, 1.12f));
+            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, -1, 0.88f);
             rightParams.setMargins(dp(12), 0, 0, 0);
             content.addView(right, rightParams);
         } else {
@@ -258,7 +281,9 @@ public class MainActivity extends Activity {
             rightParams.setMargins(0, dp(14), 0, 0);
             content.addView(right, rightParams);
         }
-        root.addView(content);
+        root.addView(content, wide
+                ? new LinearLayout.LayoutParams(-1, 0, 1f)
+                : new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout footer = new LinearLayout(this);
         footer.setGravity(Gravity.CENTER_VERTICAL);
@@ -550,12 +575,41 @@ public class MainActivity extends Activity {
     }
 
     private void toggleTheme() {
-        prefs().edit()
-                .putBoolean(KEY_LIGHT_THEME, !isLightTheme)
-                .putBoolean(KEY_THEME_TRANSITION, true)
-                .apply();
-        getWindow().getDecorView().animate().alpha(0f).setDuration(180)
-                .withEndAction(this::recreate).start();
+        final boolean nextLight = !isLightTheme;
+        final int targetBackground = themeBackground(nextLight);
+        themeToggle.setEnabled(false);
+        ViewGroup decor = (ViewGroup) getWindow().getDecorView();
+        View curtain = new View(this);
+        curtain.setBackgroundColor(targetBackground);
+        curtain.setPivotY(0f);
+        curtain.setScaleY(0f);
+        decor.addView(curtain, new ViewGroup.LayoutParams(-1, -1));
+        curtain.animate().scaleY(1f).setDuration(560)
+                .setInterpolator(new PathInterpolator(0.22f, 0f, 0f, 1f))
+                .withEndAction(() -> {
+                    prefs().edit()
+                            .putBoolean(KEY_LIGHT_THEME, nextLight)
+                            .putBoolean(KEY_THEME_TRANSITION, true)
+                            .apply();
+                    recreate();
+                }).start();
+    }
+
+    private void runThemeReveal(View decorView) {
+        decorView.post(() -> {
+            ViewGroup decor = (ViewGroup) decorView;
+            View curtain = new View(this);
+            curtain.setBackgroundColor(colorBg);
+            decor.addView(curtain, new ViewGroup.LayoutParams(-1, -1));
+            decorView.setAlpha(1f);
+            curtain.animate().translationY(decor.getHeight()).setDuration(620)
+                    .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                    .withEndAction(() -> decor.removeView(curtain)).start();
+        });
+    }
+
+    private int themeBackground(boolean light) {
+        return light ? Color.rgb(246, 242, 232) : Color.rgb(9, 13, 16);
     }
 
     private void toggleInfo(View body, TextView button) {
@@ -591,20 +645,21 @@ public class MainActivity extends Activity {
             case ERROR: targetColor = toneError; break;
             default: targetColor = toneNeutral;
         }
-        int targetFill = blendColors(colorCard, targetColor, isLightTheme ? 0.10f : 0.12f);
+        int targetFill = blendColors(colorCard, targetColor, isLightTheme ? 0.105f : 0.135f);
         if (statusAnimator != null) statusAnimator.cancel();
         final int startColor = currentStatusColor;
         final int startFill = currentStatusFill;
         final ArgbEvaluator evaluator = new ArgbEvaluator();
+        statusDrawable.beginTransition(startFill, targetFill);
         statusAnimator = ValueAnimator.ofFloat(0f, 1f);
-        statusAnimator.setDuration(340);
+        statusAnimator.setDuration(1180);
+        statusAnimator.setInterpolator(new PathInterpolator(0.18f, 0f, 0.12f, 1f));
         statusAnimator.addUpdateListener(animation -> {
             float f = (float) animation.getAnimatedValue();
             int color = (int) evaluator.evaluate(f, startColor, targetColor);
-            int fill = (int) evaluator.evaluate(f, startFill, targetFill);
             statusTitle.setTextColor(color);
             statusRail.setBackground(roundRect(color, 999));
-            statusCard.setBackground(statusGradient(fill));
+            statusDrawable.setProgress(f);
         });
         statusAnimator.start();
         currentStatusColor = targetColor;
@@ -703,13 +758,93 @@ public class MainActivity extends Activity {
                 Math.round(Color.blue(base) * (1f - amount) + Color.blue(tint) * amount));
     }
 
-    private GradientDrawable statusGradient(int leftColor) {
-        GradientDrawable drawable = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{leftColor, colorCard});
-        drawable.setCornerRadius(dp(18));
-        drawable.setStroke(dp(1), colorOutline);
-        return drawable;
+    private final class LiquidStatusDrawable extends Drawable {
+        private final Paint basePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint liquidPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+        private final Path clipPath = new Path();
+        private final Path liquidPath = new Path();
+        private int baseColor;
+        private int targetColor;
+        private final int outlineColor;
+        private float progress = 1f;
+
+        LiquidStatusDrawable(int baseColor, int outlineColor) {
+            this.baseColor = baseColor;
+            this.targetColor = baseColor;
+            this.outlineColor = outlineColor;
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeWidth(dp(1));
+            strokePaint.setColor(outlineColor);
+        }
+
+        void beginTransition(int fromColor, int toColor) {
+            baseColor = fromColor;
+            targetColor = toColor;
+            progress = 0f;
+            invalidateSelf();
+        }
+
+        void setProgress(float value) {
+            progress = Math.max(0f, Math.min(1f, value));
+            if (progress >= 0.999f) baseColor = targetColor;
+            invalidateSelf();
+        }
+
+        @Override public void draw(Canvas canvas) {
+            android.graphics.Rect bounds = getBounds();
+            float halfStroke = dp(0.5f);
+            rect.set(bounds.left + halfStroke, bounds.top + halfStroke,
+                    bounds.right - halfStroke, bounds.bottom - halfStroke);
+            float radius = dp(18);
+            basePaint.setColor(baseColor);
+            canvas.drawRoundRect(rect, radius, radius, basePaint);
+
+            if (progress > 0.01f && progress < 0.999f) {
+                clipPath.reset();
+                clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW);
+                canvas.save();
+                canvas.clipPath(clipPath);
+                liquidPaint.setColor(targetColor);
+                float boundary = rect.left + rect.width() * progress;
+                float amp = dp(9) * (0.72f + 0.28f * (1f - progress));
+                float phase = progress * (float) Math.PI * 2.15f;
+                liquidPath.reset();
+                liquidPath.moveTo(rect.left, rect.top);
+                liquidPath.lineTo(boundary + (float) Math.sin(phase) * amp, rect.top);
+                final int segments = 22;
+                for (int i = 1; i <= segments; i++) {
+                    float y = rect.top + rect.height() * i / segments;
+                    float x = boundary + (float) Math.sin(phase + i * 0.72f) * amp;
+                    liquidPath.lineTo(x, y);
+                }
+                liquidPath.lineTo(rect.left, rect.bottom);
+                liquidPath.close();
+                canvas.drawPath(liquidPath, liquidPaint);
+                canvas.restore();
+            } else if (progress >= 0.999f) {
+                basePaint.setColor(targetColor);
+                canvas.drawRoundRect(rect, radius, radius, basePaint);
+            }
+            canvas.drawRoundRect(rect, radius, radius, strokePaint);
+        }
+
+        @Override public void setAlpha(int alpha) {
+            basePaint.setAlpha(alpha);
+            liquidPaint.setAlpha(alpha);
+            strokePaint.setAlpha(alpha);
+        }
+
+        @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+            basePaint.setColorFilter(colorFilter);
+            liquidPaint.setColorFilter(colorFilter);
+            strokePaint.setColorFilter(colorFilter);
+        }
+
+        @Override public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     private GradientDrawable roundRectStroke(int fill, int stroke, int radiusDp, int strokeDp) {
@@ -735,11 +870,10 @@ public class MainActivity extends Activity {
         view.setText(value);
         view.setTextSize(sp);
         view.setTextColor(color);
-        if (bold) {
-            view.setTypeface(android.graphics.Typeface.DEFAULT,
-                    android.graphics.Typeface.BOLD);
-        }
-        view.setLineSpacing(0, 1.12f);
+        view.setTypeface(android.graphics.Typeface.create(
+                bold ? "sans-serif-medium" : "sans-serif",
+                android.graphics.Typeface.NORMAL));
+        view.setLineSpacing(0, 1.10f);
         return view;
     }
 
@@ -747,6 +881,7 @@ public class MainActivity extends Activity {
         Button button = new Button(this);
         button.setText(value);
         button.setTextSize(16);
+        button.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         button.setTextColor(foreground);
         button.setAllCaps(false);
         button.setMinHeight(dp(54));
@@ -763,6 +898,12 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
+    private LinearLayout.LayoutParams weightedCard(float weight, int bottomDp) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, 0, weight);
+        params.setMargins(0, 0, 0, dp(bottomDp));
+        return params;
+    }
+
     private LinearLayout.LayoutParams matchWrap(int left, int top, int right, int bottom) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.setMargins(dp(left), dp(top), dp(right), dp(bottom));
@@ -771,5 +912,9 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private float dp(float value) {
+        return value * getResources().getDisplayMetrics().density;
     }
 }
