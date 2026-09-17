@@ -11,7 +11,10 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -28,6 +31,15 @@ public class MainActivity extends Activity {
     private TextView statusTitle;
     private TextView statusDetail;
     private TextView buildInfo;
+    private LinearLayout statusCard;
+    private View statusRail;
+    private LinearLayout detailsBody;
+    private Button detailsToggle;
+    private TextView detailFirmware;
+    private TextView detailSupport;
+    private TextView detailScanner;
+    private TextView detailCarrier;
+    private TextView detailAps;
     private Button diagnoseButton;
     private Button recoverButton;
     private Button reportButton;
@@ -50,52 +62,163 @@ public class MainActivity extends Activity {
     }
 
     private void buildUi() {
+        final int bg = Color.rgb(9, 13, 16);
+        final int card = Color.rgb(17, 24, 29);
+        final int cardSoft = Color.rgb(13, 19, 23);
+        final int outline = Color.rgb(38, 52, 60);
+        final int accent = Color.rgb(119, 216, 199);
+        final int textPrimary = Color.rgb(242, 246, 247);
+        final int textSecondary = Color.rgb(170, 182, 188);
+        final int textMuted = Color.rgb(116, 132, 140);
+        final boolean wide = getResources().getConfiguration().screenWidthDp >= 700;
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
         LinearLayout root = column();
-        root.setPadding(dp(24), dp(24), dp(24), dp(28));
-        root.setBackgroundColor(Color.rgb(11,16,20));
+        root.setPadding(dp(wide ? 24 : 20), dp(16), dp(wide ? 24 : 20), dp(18));
+        root.setBackgroundColor(bg);
         scroll.addView(root);
 
-        TextView title = text(getString(R.string.app_name), 30, Color.WHITE, true);
-        root.addView(title);
-        TextView subtitle = text(getString(R.string.subtitle), 15, Color.rgb(165,181,190), false);
-        subtitle.setPadding(0, dp(6), 0, dp(8));
-        root.addView(subtitle);
-        buildInfo = text(getString(R.string.build_info, BuildConfig.VERSION_NAME, getString(R.string.unknown_value)), 12, Color.rgb(128,145,154), false);
-        buildInfo.setPadding(0, 0, 0, dp(18));
-        root.addView(buildInfo);
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.ic_wifi_recovery_foreground);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+        logoParams.setMargins(0, 0, dp(14), 0);
+        header.addView(logo, logoParams);
+        LinearLayout headerText = column();
+        TextView title = text(getString(R.string.app_name), wide ? 25 : 24, textPrimary, true);
+        headerText.addView(title);
+        TextView subtitle = text(getString(R.string.subtitle), 13, textSecondary, false);
+        subtitle.setPadding(0, dp(2), 0, 0);
+        headerText.addView(subtitle);
+        header.addView(headerText, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        LinearLayout statusCard = column();
-        statusCard.setPadding(dp(18), dp(18), dp(18), dp(18));
-        statusCard.setBackground(roundRect(Color.rgb(20,29,35), 18));
-        statusTitle = text(getString(R.string.status_checking), 20, Color.rgb(110,214,197), true);
-        statusDetail = text("", 14, Color.rgb(190,201,207), false);
-        statusDetail.setPadding(0, dp(8), 0, 0);
-        statusCard.addView(statusTitle);
-        statusCard.addView(statusDetail);
-        root.addView(statusCard, matchWrap(0, 0, 0, 18));
+        LinearLayout chips = new LinearLayout(this);
+        chips.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+        chips.addView(chip(getString(R.string.chip_validated), Color.rgb(24, 56, 51), accent));
+        chips.addView(chip(getString(R.string.chip_offline), Color.rgb(31, 42, 48), textSecondary), chipMargin());
+        if (wide) {
+            header.addView(chips);
+        }
+        root.addView(header);
+        if (!wide) {
+            chips.setGravity(Gravity.START);
+            chips.setPadding(dp(62), dp(8), 0, 0);
+            root.addView(chips);
+        }
 
-        diagnoseButton = button(getString(R.string.diagnose), Color.rgb(35,49,57), Color.WHITE);
-        recoverButton = button(getString(R.string.recover), Color.rgb(110,214,197), Color.rgb(4,33,30));
-        recoverButton.setEnabled(false);
-        diagnoseButton.setOnClickListener(v -> runProbe(true, false));
-        recoverButton.setOnClickListener(v -> confirmRecovery());
-        reportButton = button(getString(R.string.copy_report), Color.rgb(35,49,57), Color.WHITE);
-        projectButton = button(getString(R.string.open_project), Color.rgb(35,49,57), Color.WHITE);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        content.setGravity(Gravity.TOP);
+        content.setPadding(0, dp(wide ? 14 : 16), 0, 0);
+        LinearLayout left = column();
+        LinearLayout right = column();
+        statusCard = new LinearLayout(this);
+        statusCard.setOrientation(LinearLayout.HORIZONTAL);
+        statusCard.setBackground(roundRectStroke(card, outline, 18, 1));
+        statusRail = new View(this);
+        statusRail.setBackground(roundRect(accent, 999));
+        LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(dp(4), -1);
+        railParams.setMargins(0, dp(12), 0, dp(12));
+        statusCard.addView(statusRail, railParams);
+
+        LinearLayout statusContent = column();
+        statusContent.setPadding(dp(18), dp(14), dp(18), dp(16));
+        statusContent.addView(sectionLabel(getString(R.string.section_status)));
+        statusTitle = text(getString(R.string.status_checking), 21, accent, true);
+        statusTitle.setPadding(0, dp(6), 0, 0);
+        statusContent.addView(statusTitle);
+        statusDetail = text("", 13, Color.rgb(202, 211, 215), false);
+        statusDetail.setPadding(0, dp(5), 0, 0);
+        statusContent.addView(statusDetail);
+        statusCard.addView(statusContent, new LinearLayout.LayoutParams(0, -2, 1f));
+        left.addView(statusCard, matchWrap(0, 0, 0, 12));
+
+        LinearLayout tools = column();
+        tools.setPadding(dp(2), 0, dp(2), 0);
+        tools.addView(sectionLabel(getString(R.string.section_tools)));
+        LinearLayout toolRow = new LinearLayout(this);
+        toolRow.setPadding(0, dp(8), 0, 0);
+        diagnoseButton = outlineButton(getString(R.string.diagnose));
+        reportButton = outlineButton(getString(R.string.copy_report));
         reportButton.setEnabled(false);
+        diagnoseButton.setOnClickListener(v -> runProbe(true, false));
         reportButton.setOnClickListener(v -> copyDiagnosticReport());
-        projectButton.setOnClickListener(v -> openProject());
-        root.addView(diagnoseButton, matchWrap(0, 0, 0, 12));
-        root.addView(recoverButton, matchWrap(0, 0, 0, 12));
-        root.addView(reportButton, matchWrap(0, 0, 0, 12));
-        root.addView(projectButton, matchWrap(0, 0, 0, 20));
+        toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
+        toolRow.addView(reportButton, weightedButton(dp(5), 0));
+        tools.addView(toolRow);
+        left.addView(tools);
 
-        TextView warning = text(getString(R.string.warning), 14, Color.rgb(222,228,231), false);
-        warning.setPadding(dp(2), 0, dp(2), dp(18));
-        root.addView(warning);
-        TextView about = text(getString(R.string.about), 12, Color.rgb(128,145,154), false);
-        root.addView(about);
+        LinearLayout recoveryCard = column();
+        recoveryCard.setPadding(dp(18), dp(15), dp(18), dp(17));
+        recoveryCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
+        recoveryCard.addView(sectionLabel(getString(R.string.section_recovery)));
+        TextView recoveryHint = text(getString(R.string.recovery_hint), 13, textSecondary, false);
+        recoveryHint.setPadding(0, dp(6), 0, dp(12));
+        recoveryCard.addView(recoveryHint);
+        recoverButton = button(getString(R.string.recover), accent, Color.rgb(4, 33, 30));
+        recoverButton.setEnabled(false);
+        recoverButton.setOnClickListener(v -> confirmRecovery());
+        recoveryCard.addView(recoverButton);
+        right.addView(recoveryCard, matchWrap(0, 0, 0, 12));
+
+        LinearLayout detailsCard = column();
+        detailsCard.setPadding(dp(18), dp(8), dp(18), dp(10));
+        detailsCard.setBackground(roundRectStroke(cardSoft, outline, 18, 1));
+        detailsToggle = textButton(getString(R.string.details_show));
+        detailsToggle.setOnClickListener(v -> toggleDetails());
+        detailsCard.addView(detailsToggle);
+        detailsBody = column();
+        detailsBody.setVisibility(View.GONE);
+        detailsBody.setPadding(0, dp(8), 0, 0);
+        detailFirmware = addDetail(detailsBody, R.string.detail_firmware, R.string.unknown_value);
+        detailSupport = addDetail(detailsBody, R.string.detail_support, R.string.detail_not_checked);
+        detailScanner = addDetail(detailsBody, R.string.detail_scanner, R.string.detail_not_checked);
+        detailCarrier = addDetail(detailsBody, R.string.detail_carrier, R.string.detail_not_checked);
+        detailAps = addDetail(detailsBody, R.string.detail_radio_aps, R.string.detail_not_checked);
+        detailsBody.addView(divider());
+        TextView privacy = text(getString(R.string.privacy_note), 12, textMuted, false);
+        privacy.setPadding(0, dp(10), 0, dp(2));
+        detailsBody.addView(privacy);
+        projectButton = textButton(getString(R.string.open_project));
+        projectButton.setOnClickListener(v -> openProject());
+        detailsBody.addView(projectButton);
+        detailsCard.addView(detailsBody);
+        right.addView(detailsCard);
+
+        if (wide) {
+            content.addView(left, new LinearLayout.LayoutParams(0, -2, 1.12f));
+            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, -2, 0.88f);
+            rightParams.setMargins(dp(12), 0, 0, 0);
+            content.addView(right, rightParams);
+        } else {
+            content.addView(left, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(-1, -2);
+            rightParams.setMargins(0, dp(14), 0, 0);
+            content.addView(right, rightParams);
+        }
+        root.addView(content);
+
+        LinearLayout footer = new LinearLayout(this);
+        footer.setGravity(Gravity.CENTER_VERTICAL);
+        footer.setPadding(dp(2), dp(12), dp(2), 0);
+        buildInfo = text(getString(R.string.build_info, BuildConfig.VERSION_NAME,
+                getString(R.string.unknown_value)), 10, textMuted, false);
+        TextView about = text(getString(R.string.about), 10, textMuted, false);
+        if (wide) {
+            footer.addView(buildInfo, new LinearLayout.LayoutParams(0, -2, 1f));
+            about.setGravity(Gravity.END);
+            footer.addView(about, new LinearLayout.LayoutParams(0, -2, 1f));
+        } else {
+            LinearLayout footerColumn = column();
+            footerColumn.addView(buildInfo);
+            about.setPadding(0, dp(3), 0, 0);
+            footerColumn.addView(about);
+            footer.addView(footerColumn, new LinearLayout.LayoutParams(-1, -2));
+        }
+        root.addView(footer);
         setContentView(scroll);
     }
 
@@ -103,6 +226,7 @@ public class MainActivity extends Activity {
         setBusy(true);
         statusTitle.setText(postRecovery ? R.string.status_verifying : R.string.status_checking);
         statusDetail.setText("");
+        setStatusVisual(StatusTone.NEUTRAL);
         worker.execute(() -> {
             try {
                 if (fullDiagnosis) {
@@ -128,23 +252,28 @@ public class MainActivity extends Activity {
     private void showProbe(DiagnosticEngine.DeviceInfo info) {
         lastSnapshot = null;
         updateBuildInfo(info);
+        updateDetails(info, null);
         recoverButton.setEnabled(false);
         if (!DiagnosticEngine.isSupportedFirmware(info.firmware)) {
             diagnosisAllowed = false;
             statusTitle.setText(R.string.status_unsupported);
             statusDetail.setText(getString(R.string.unsupported_firmware_detail, info.firmware));
+            setStatusVisual(StatusTone.WARNING);
         } else if (!info.wifiEnabled) {
             diagnosisAllowed = true;
             statusTitle.setText(R.string.status_wifi_off);
             statusDetail.setText(R.string.wifi_off_detail);
+            setStatusVisual(StatusTone.WARNING);
         } else if (!info.wlanPresent) {
             diagnosisAllowed = false;
             statusTitle.setText(R.string.status_wlan_missing);
             statusDetail.setText(R.string.wlan_missing_detail);
+            setStatusVisual(StatusTone.ERROR);
         } else {
             diagnosisAllowed = true;
-            statusTitle.setText(R.string.status_ready);
-            statusDetail.setText(getString(R.string.validated_firmware_detail, info.firmware));
+            statusTitle.setText(R.string.status_probe_ready);
+            statusDetail.setText(R.string.validated_firmware_detail);
+            setStatusVisual(StatusTone.NEUTRAL);
         }
         setBusy(false);
     }
@@ -152,6 +281,7 @@ public class MainActivity extends Activity {
     private void showDiagnosis(DiagnosticEngine.Snapshot snapshot, boolean postRecovery) {
         lastSnapshot = snapshot;
         updateBuildInfo(snapshot.device);
+        updateDetails(snapshot.device, snapshot);
         if (postRecovery) {
             prefs().edit().remove(KEY_RECOVERY_PENDING).apply();
             showPostRecovery(snapshot);
@@ -168,6 +298,7 @@ public class MainActivity extends Activity {
             case READY:
                 statusTitle.setText(R.string.status_ready);
                 statusDetail.setText(R.string.scanner_idle_detail);
+                setStatusVisual(StatusTone.OK);
                 break;
             case LOCKUP_CONFIRMED:
                 statusTitle.setText(R.string.status_lockup);
@@ -175,35 +306,43 @@ public class MainActivity extends Activity {
                         ? getString(R.string.lockup_state_detail)
                         : getResources().getQuantityString(R.plurals.lockup_detail, snapshot.radioAps, snapshot.radioAps));
                 recoverButton.setEnabled(true);
+                setStatusVisual(StatusTone.RECOVERY);
                 break;
             case UNSUPPORTED_FIRMWARE:
                 statusTitle.setText(R.string.status_unsupported);
                 statusDetail.setText(getString(
                         R.string.unsupported_firmware_detail, snapshot.device.firmware));
+                setStatusVisual(StatusTone.WARNING);
                 break;
             case WIFI_DISABLED:
                 statusTitle.setText(R.string.status_wifi_off);
                 statusDetail.setText(R.string.wifi_off_detail);
+                setStatusVisual(StatusTone.WARNING);
                 break;
             case WLAN_MISSING:
                 statusTitle.setText(R.string.status_wlan_missing);
                 statusDetail.setText(R.string.wlan_missing_detail);
+                setStatusVisual(StatusTone.ERROR);
                 break;
             case SCANNER_TIMEOUT:
                 statusTitle.setText(R.string.status_scanner_timeout);
                 statusDetail.setText(R.string.scanner_timeout_detail);
+                setStatusVisual(StatusTone.WARNING);
                 break;
             case SCANNER_ERROR:
                 statusTitle.setText(R.string.status_scanner_error);
                 statusDetail.setText(getString(R.string.scanner_error_detail, snapshot.scannerRc));
+                setStatusVisual(StatusTone.ERROR);
                 break;
             case SCANNER_UNCONFIRMED:
                 statusTitle.setText(R.string.status_scanner_unconfirmed);
                 statusDetail.setText(R.string.scanner_unconfirmed_detail);
+                setStatusVisual(StatusTone.WARNING);
                 break;
             default:
                 statusTitle.setText(R.string.status_scanner_unknown);
                 statusDetail.setText(R.string.scanner_unknown_detail);
+                setStatusVisual(StatusTone.WARNING);
                 break;
         }
         setBusy(false);
@@ -218,13 +357,16 @@ public class MainActivity extends Activity {
         if (diagnosis == DiagnosticEngine.Diagnosis.READY) {
             statusTitle.setText(R.string.status_recovery_success);
             statusDetail.setText(R.string.recovery_success_detail);
+            setStatusVisual(StatusTone.OK);
         } else if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED) {
             statusTitle.setText(R.string.status_recovery_failed);
             statusDetail.setText(R.string.recovery_failed_detail);
             recoverButton.setEnabled(true);
+            setStatusVisual(StatusTone.ERROR);
         } else {
             statusTitle.setText(R.string.status_recovery_unverified);
             statusDetail.setText(postRecoveryDetail(diagnosis, snapshot));
+            setStatusVisual(StatusTone.WARNING);
         }
     }
 
@@ -255,6 +397,7 @@ public class MainActivity extends Activity {
                 ? R.string.status_recovery_unverified
                 : R.string.status_unavailable);
         statusDetail.setText(getString(R.string.service_error, safeMessage(e)));
+        setStatusVisual(StatusTone.ERROR);
         recoverButton.setEnabled(false);
         setBusy(false);
     }
@@ -273,6 +416,7 @@ public class MainActivity extends Activity {
         if (!persisted) {
             statusTitle.setText(R.string.status_unavailable);
             statusDetail.setText(R.string.pending_state_error);
+            setStatusVisual(StatusTone.ERROR);
             setBusy(false);
             return;
         }
@@ -301,7 +445,7 @@ public class MainActivity extends Activity {
         diagnoseButton.setEnabled(!busy && diagnosisAllowed);
         if (busy) recoverButton.setEnabled(false);
         diagnoseButton.setAlpha(diagnoseButton.isEnabled() ? 1f : 0.55f);
-        recoverButton.setAlpha(recoverButton.isEnabled() ? 1f : 0.55f);
+        recoverButton.setAlpha(recoverButton.isEnabled() ? 1f : 0.35f);
         reportButton.setEnabled(!busy && lastSnapshot != null);
         reportButton.setAlpha(reportButton.isEnabled() ? 1f : 0.55f);
         projectButton.setEnabled(!busy);
@@ -325,6 +469,122 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, R.string.project_unavailable, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private enum StatusTone { OK, RECOVERY, WARNING, ERROR, NEUTRAL }
+
+    private void setStatusVisual(StatusTone tone) {
+        int titleColor;
+        switch (tone) {
+            case OK:
+                titleColor = Color.rgb(110, 214, 197);
+                break;
+            case RECOVERY:
+                titleColor = Color.rgb(255, 151, 118);
+                break;
+            case WARNING:
+                titleColor = Color.rgb(238, 190, 103);
+                break;
+            case ERROR:
+                titleColor = Color.rgb(255, 132, 132);
+                break;
+            default:
+                titleColor = Color.rgb(157, 184, 198);
+        }
+        statusTitle.setTextColor(titleColor);
+        statusRail.setBackground(roundRect(titleColor, 999));
+    }
+
+    private TextView sectionLabel(String value) {
+        TextView view = text(value.toUpperCase(java.util.Locale.ROOT), 11,
+                Color.rgb(112, 128, 137), true);
+        view.setLetterSpacing(0.12f);
+        return view;
+    }
+
+    private TextView chip(String value, int background, int foreground) {
+        TextView view = text(value, 11, foreground, true);
+        view.setGravity(Gravity.CENTER);
+        view.setPadding(dp(10), dp(5), dp(10), dp(5));
+        view.setBackground(roundRect(background, 999));
+        return view;
+    }
+
+    private LinearLayout.LayoutParams chipMargin() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
+        params.setMargins(dp(8), 0, 0, 0);
+        return params;
+    }
+
+    private Button outlineButton(String value) {
+        Button button = button(value, Color.rgb(18, 25, 30), Color.rgb(226, 233, 236));
+        button.setBackground(roundRectStroke(Color.rgb(18, 25, 30),
+                Color.rgb(58, 75, 84), 16, 1));
+        return button;
+    }
+
+    private Button textButton(String value) {
+        Button button = button(value, Color.TRANSPARENT, Color.rgb(110, 214, 197));
+        button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        button.setPadding(0, 0, 0, 0);
+        button.setMinHeight(dp(42));
+        return button;
+    }
+
+    private LinearLayout.LayoutParams weightedButton(int left, int right) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1f);
+        params.setMargins(left, 0, right, 0);
+        return params;
+    }
+
+    private TextView addDetail(LinearLayout parent, int labelRes, int initialValueRes) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label = text(getString(labelRes), 13, Color.rgb(126, 141, 149), false);
+        TextView value = text(getString(initialValueRes), 13, Color.rgb(224, 231, 234), true);
+        value.setGravity(Gravity.END);
+        row.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
+        row.addView(value, new LinearLayout.LayoutParams(0, -2, 1.35f));
+        parent.addView(row, matchWrap(0, 0, 0, 10));
+        return value;
+    }
+
+    private View divider() {
+        View view = new View(this);
+        view.setBackgroundColor(Color.rgb(39, 50, 56));
+        view.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(1)));
+        return view;
+    }
+
+    private void toggleDetails() {
+        boolean show = detailsBody.getVisibility() != View.VISIBLE;
+        detailsBody.setVisibility(show ? View.VISIBLE : View.GONE);
+        detailsToggle.setText(show ? R.string.details_hide : R.string.details_show);
+    }
+
+    private void updateDetails(DiagnosticEngine.DeviceInfo info,
+                               DiagnosticEngine.Snapshot snapshot) {
+        String firmware = info == null || info.firmware == null || info.firmware.trim().isEmpty()
+                ? getString(R.string.unknown_value) : info.firmware.trim();
+        detailFirmware.setText(firmware);
+        detailSupport.setText(info != null && DiagnosticEngine.isSupportedFirmware(info.firmware)
+                ? R.string.detail_supported : R.string.detail_not_supported);
+        if (snapshot == null) {
+            detailScanner.setText(R.string.detail_not_checked);
+            detailCarrier.setText(R.string.detail_not_checked);
+            detailAps.setText(R.string.detail_not_checked);
+            return;
+        }
+        detailScanner.setText(snapshot.scannerIdle() ? "IdleState"
+                : snapshot.scannerScanning() ? "ScanningState" : getString(R.string.detail_unknown));
+        detailCarrier.setText(snapshot.carrierUp ? R.string.detail_active : R.string.detail_inactive);
+        detailAps.setText(String.valueOf(snapshot.radioAps));
+    }
+
+    private GradientDrawable roundRectStroke(int fill, int stroke, int radiusDp, int strokeDp) {
+        GradientDrawable drawable = roundRect(fill, radiusDp);
+        drawable.setStroke(dp(strokeDp), stroke);
+        return drawable;
     }
 
     private String safeMessage(Exception e) {
