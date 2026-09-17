@@ -1,0 +1,4 @@
+storeFile=C:/path/to/ayn-thor-wifi-recovery-release.jks
+storePassword=replace-me
+keyAlias=ayn-thor-wifi-recovery
+keyPassword=replace-me

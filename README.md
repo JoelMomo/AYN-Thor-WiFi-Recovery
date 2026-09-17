@@ -26,6 +26,14 @@ The repository also contains an Android app in `app/`.
 
 This state-based check avoids using `cmd wifi start-scan` as a diagnostic action, because testing showed that initiating another framework scan can itself leave the scanner in `ScanningState` on the affected firmware.
 
+### Signed APK
+
+The first public signed APK is `v0.2.0-alpha4`. Download it from the GitHub Releases page.
+
+- Release certificate SHA-256: `0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
+- The app requests no Internet permission and does not store Wi-Fi credentials.
+- If you installed an earlier debug test APK, uninstall it once before installing the signed release because the signing key is different.
+
 ## When to use it
 
 Use this only when the Thor is affected by the same failure pattern:
@@ -37,13 +45,13 @@ Use this only when the Thor is affected by the same failure pattern:
 
 Do not use it for ordinary password, authentication, DHCP or "connected without Internet" problems.
 
-## Installation
+## Script installation
 
 1. Download `Thor_WiFi_Recovery.sh`.
 2. Copy it to the Thor, for example to `Download`.
 3. Save any open game or application before running it.
 
-## Usage
+## Script usage
 
 1. Open the AYN/Thor settings app.
 2. Open **Run script as Root**.

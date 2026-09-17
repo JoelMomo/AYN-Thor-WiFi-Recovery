@@ -2,6 +2,20 @@ plugins {
     id 'com.android.application'
 }
 
+def signingPropertiesFile = rootProject.file('signing.properties')
+def releaseStoreFile = null
+def releaseStorePassword = null
+def releaseKeyAlias = null
+def releaseKeyPassword = null
+if (signingPropertiesFile.exists()) {
+    def p = new Properties()
+    signingPropertiesFile.withInputStream { p.load(it) }
+    releaseStoreFile = p.getProperty('storeFile')
+    releaseStorePassword = p.getProperty('storePassword')
+    releaseKeyAlias = p.getProperty('keyAlias')
+    releaseKeyPassword = p.getProperty('keyPassword')
+}
+
 android {
     namespace 'dev.joelmomo.thorwifirecovery'
     compileSdk 36
@@ -12,5 +26,25 @@ android {
         targetSdk 33
         versionCode 203
         versionName '0.2.0-alpha4'
+    }
+    signingConfigs {
+        release { cfg ->
+            if (releaseStoreFile != null) {
+                cfg.storeFile file(releaseStoreFile)
+                cfg.storePassword releaseStorePassword
+                cfg.keyAlias releaseKeyAlias
+                cfg.keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release { bt ->
+            bt.minifyEnabled false
+            bt.shrinkResources false
+            if (releaseStoreFile != null) {
+                bt.signingConfig signingConfigs.release
+            }
+        }
     }
 }
