@@ -1,6 +1,6 @@
 # AYN Thor Wi-Fi Recovery
 
-[![Android CI](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml/badge.svg)](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml)
+[![Android CI](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml/badge.svg)](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml) [![Latest release](https://img.shields.io/github/v/release/JoelMomo/AYN-Thor-WiFi-Recovery?include_prereleases&style=flat-square)](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases) [![Apps & tools](https://img.shields.io/badge/Apps%20%26%20tools-Browse-6F8F72?style=flat-square)](https://joelmomo.github.io/)
 
 Open-source Android recovery tool for the intermittent Wi-Fi scan lockup observed on the stock **AYN Thor** firmware `.377`.
 
