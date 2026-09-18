@@ -179,6 +179,12 @@ Third-party notices, including the Nunito font license and the upstream Binder-r
 
 MIT. See [LICENSE](LICENSE).
 
+## Contributing
+
+Bug reports, feature ideas and focused pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening one.
+
+For security or privacy-sensitive reports, follow [SECURITY.md](SECURITY.md) instead of posting details publicly.
+
 <div align="center">
 
 ## Support development
