@@ -2,134 +2,175 @@
 
 [![Android CI](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml/badge.svg)](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/actions/workflows/android-ci.yml)
 
-Temporary workaround for an intermittent Wi-Fi scanning lockup observed on the stock AYN Thor Android firmware.
+Open-source Android recovery tool for the intermittent Wi-Fi scan lockup observed on the stock **AYN Thor** firmware `.377`.
 
-## Tested configuration
+<p align="center">
+  <img src="docs/images/dashboard-dark.png" alt="Thor Wi-Fi Recovery dashboard in dark mode" width="100%">
+</p>
 
-- Device: AYN Thor
-- Android: 13
-- Firmware: `Thor_V1.0.0.377_20260206_165408_user`
-- Symptom: Wi-Fi is enabled, but Android keeps scanning and shows no access points.
+> [!IMPORTANT]
+> This is an experimental community workaround, not an official AYN fix. It does not modify the firmware, but recovery restarts Android services and closes running apps. Save your game first.
 
-This is **not an official AYN fix** and it does not modify the firmware.
+## Validated configuration
 
-## Android app (beta)
+- **Device:** AYN Thor
+- **Android:** 13
+- **Firmware:** `Thor_V1.0.0.377_20260206_165408_user`
+- **Observed symptom:** Wi-Fi is enabled, but scanning becomes stuck and Android stops showing nearby access points.
 
-The repository also contains an Android app in `app/`. Current development beta: `0.3.0-beta14` (latest public prerelease: `0.3.0-beta11`).
+The app deliberately fails closed on unvalidated firmware.
 
-- UI language follows Android's system/app language; English, Spanish, German, French, Italian and Simplified Chinese are included.
-- Android 13 exposes these translations through the system per-app language selector.
-- It uses AYN's built-in `PServerBinder` service for a fixed, narrow set of diagnostic/recovery commands.
-- The Binder invocation pattern is adapted from `parthi1994/ayn-thor-wifi-recovery` under MIT; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- The diagnostic does **not** start an Android framework scan. It reads the `WifiSingleScanStateMachine` state with a bounded `dumpsys wifiscanner` query.
-- If the scanner is stuck in `ScanningState` while the Wi-Fi link is active, **Recover Wi-Fi** is enabled.
-- If the link is down, a low-level `wpa_cli` scan is used as secondary evidence that the radio can still see APs.
-- When the framework is stuck but the low-level radio path still responds, recovery restarts Android's runtime/framework.
-- When there is no carrier and no low-level AP evidence, recovery first restarts the `.377` vendor Wi-Fi HAL and then restarts Android's runtime/framework.
-- If the light recovery is still stuck after delayed verification and a retry, the app automatically escalates once to the deeper HAL + framework recovery.
-- `IdleState` or an unconfirmed signature keeps recovery disabled.
-- The exact validated `.377` build is checked before recovery can be enabled; unknown firmware fails closed.
-- After recovery, the app stores a pending-verification flag and checks the scanner automatically when Android returns.
-- The diagnosis engine is covered by unit tests for healthy, confirmed, unsupported, timeout, error and ambiguous states.
-- After a full check, **Copy diagnostic report** copies a sanitized local report with firmware, diagnosis, scanner state, carrier state and AP count only.
-- The UI shows the installed app version and detected firmware, links to the source project, and uses an adaptive launcher icon with Android 13 monochrome support.
-- The app has no Internet permission and does not store Wi-Fi passwords. Diagnostic logs contain only state booleans/counts, not SSIDs or BSSIDs.
+## Android app
 
-This state-based check avoids using `cmd wifi start-scan` as a diagnostic action, because testing showed that initiating another framework scan can itself leave the scanner in `ScanningState` on the affected firmware.
+Current development build on `main`: **0.3.0-beta15**
 
-### Signed APK
+Latest signed public prerelease: **0.3.0-beta11**
 
-The current beta is `v0.3.0-beta11`. Download the signed APK from the GitHub Releases page.
+[Download the latest signed prerelease](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases)
 
-- Release certificate SHA-256: `0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
-- The app requests no Internet permission and does not store Wi-Fi credentials.
-- If you installed an earlier debug test APK, uninstall it once before installing the signed release because the signing key is different.
+The app:
 
-## When to use it
+- checks the exact validated firmware before recovery can be enabled;
+- reads Android's Wi-Fi scanner state without starting another framework scan;
+- distinguishes healthy, confirmed, probable, timeout, error and unsupported states;
+- uses low-level radio evidence only when needed;
+- chooses between a framework-only recovery and a deeper Wi-Fi HAL + framework recovery;
+- verifies the scanner after Android returns and can escalate once if the light recovery did not clear the lockup;
+- copies a sanitized local support report;
+- requests **no Internet permission** and contains **no telemetry**;
+- does not read or store Wi-Fi passwords.
 
-Use this only when the Thor is affected by the same failure pattern:
+## How recovery works
 
-- Wi-Fi is enabled but the network list is empty.
-- Toggling Wi-Fi or airplane mode does not recover scanning.
-- A reboot may or may not recover it.
-- If ADB is available, `adb shell cmd wifi list-scan-results` may return `No scan results`.
+The affected `.377` unit was observed with `WifiSingleScanStateMachine` stuck in `ScanningState`.
 
-Do not use it for ordinary password, authentication, DHCP or "connected without Internet" problems.
+Thor Wi-Fi Recovery uses two recovery levels:
+
+1. **Framework recovery** — restarts Android's runtime/framework when the lower Wi-Fi path still appears alive.
+2. **Deep recovery** — restarts `vendor.wifi_hal_legacy` and then Android's framework when there is no carrier and no low-level AP evidence.
+
+After recovery, the app waits for Android to settle, checks the scanner again, retries once, and can escalate from the light path to the deep path if necessary.
+
+The original manual fallback remains available as `Thor_WiFi_Recovery.sh`.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/device-details-dark.png" alt="Device details in dark mode" width="49%">
+  <img src="docs/images/dashboard-light.png" alt="Thor Wi-Fi Recovery in light mode" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/images/diagnostic-running.png" alt="Wi-Fi diagnostic running" width="75%">
+</p>
+
+Screenshots are captured directly from the physical Thor. System status/navigation bars have been removed from the documentation images.
+
+## Languages
+
+The UI follows Android's system language or Android 13's per-app language setting.
+
+- English
+- Español
+- Català
+- Galego
+- Euskara
+- Português
+- Deutsch
+- Français
+- Italiano
+- Русский
+- 日本語
+- 简体中文
+
+Spanish uses the generic `es` resource set, so Android variants such as `es-419` also remain in Spanish rather than falling back to English. The current wording is the same Spanish translation used for Spain.
+
+All twelve translations are checked against the same translatable resource set. CI rejects missing/extra localized resources, and the current development build is visually validated on the physical Thor in **dark and light themes** for every included language.
 
 ## Installation
 
-### Android app
-
-1. Download the signed APK from the latest GitHub prerelease.
+1. Download the signed APK from [GitHub Releases](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases).
 2. Install and open **Thor Wi-Fi Recovery**.
-3. Tap **Check Wi-Fi** when Android shows the affected symptom.
-4. **Recover Wi-Fi** is enabled only when the validated lockup is confirmed.
-5. Use **Copy diagnostic report** if you want to share a sanitized result for troubleshooting.
+3. When the Wi-Fi network list is empty, tap **Check Wi-Fi**.
+4. **Recover Wi-Fi** is enabled only when the app has enough evidence to permit the validated recovery path.
+5. Save any open game/app before starting recovery.
+6. Use **Copy report** if you need to share a sanitized diagnostic result.
 
-### Manual script fallback
+If you previously installed one of the old debug APKs, uninstall it once before installing the signed release because the signing key is different.
 
-1. Download `Thor_WiFi_Recovery.sh`.
-2. Copy it to the Thor, for example to `Download`.
-3. Save any open game or application before running it.
+## More apps
 
-## Manual script usage
+The compact **+ apps** control in the app header opens JoelMomo's GitHub repository list in the system browser. This keeps the Wi-Fi utility independent while providing a future-proof route to other projects, including **CarePad** and any later apps such as the planned keyboard.
 
-1. Open the AYN/Thor settings app.
-2. Open **Run script as Root**.
-3. Select `Thor_WiFi_Recovery.sh`.
-4. Android's UI/framework will restart for a few seconds.
-5. Wait for the launcher to return, then open Wi-Fi settings again.
+- [CarePad](https://github.com/JoelMomo/CarePad)
+- [More projects by JoelMomo](https://github.com/JoelMomo?tab=repositories)
 
-Running the script closes currently open apps. Save your progress first.
+Opening these links is delegated to the browser; Thor Wi-Fi Recovery still requests no Internet permission itself.
 
-## What it does
+### Release signing certificate
 
-The script runs:
+SHA-256:
+
+`0d901b01a4230283554200ce674999a89bfe16c00388d95d288e4e2ba5933b59`
+
+## When not to use it
+
+This tool is for the specific scan-lockup pattern above. It is not intended to fix:
+
+- wrong Wi-Fi passwords;
+- authentication failures;
+- DHCP/IP problems;
+- router Internet outages;
+- ordinary "connected without Internet" issues.
+
+## Privacy and safety
+
+- No `android.permission.INTERNET`.
+- No telemetry or analytics.
+- No SSID/BSSID/password collection in the support report.
+- Recovery is restricted to the exact validated firmware.
+- Saved networks, ROMs, emulator data and frontend configuration are not erased.
+- Recovery does close running Android apps because framework services are restarted.
+
+## Manual script fallback
+
+The repository still includes `Thor_WiFi_Recovery.sh`.
+
+1. Copy it to the Thor, for example to `Download`.
+2. Save all open progress.
+3. Open the AYN/Thor settings app.
+4. Open **Run script as Root**.
+5. Select the script.
+
+The manual script runs:
 
 ```sh
 setprop ctl.restart zygote
 ```
 
-On the tested `.377` build this restarts the Android runtime/framework path, including the Wi-Fi scanning service, without rebooting the whole console. It does **not** erase saved Wi-Fi networks, ROMs, emulator data or frontend configuration.
-
-A small timestamp log is written to:
+and writes a small timestamp log to:
 
 `/sdcard/Download/ayn_thor_wifi_recovery.log`
 
+The Android app is preferred because it adds firmware gating, diagnosis, adaptive recovery and post-recovery verification.
+
 ## Development and CI
 
-GitHub Actions runs on every push to `main` and on pull requests. CI uses JDK 17 and runs:
+GitHub Actions runs on pushes to `main` and pull requests. CI uses JDK 17 and runs:
 
 - unit tests;
 - Android lint;
-- debug APK compilation;
+- APK compilation;
+- translation-resource parity for every locale declared in `locales_config.xml`;
 - a built-APK check that rejects `android.permission.INTERNET`;
-- a source check that rejects obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
-- upload of the debug APK and lint report as workflow artifacts.
+- source checks against obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
+- debug APK and lint-report artifact upload.
 
-Public release APKs remain signed locally with the dedicated release key; the private signing key is not stored in GitHub.
+Public release APKs are signed locally with a dedicated release key. The private signing key is not stored in GitHub.
 
-## What I observed
+For implementation details, validation evidence and known limitations, see [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
 
-During the failure, Android's `WifiSingleScanStateMachine` entered `ScanningState` and did not return scan results. After restarting the Android framework, scan results resumed and the device reconnected normally.
-
-See [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for the diagnostic evidence and limitations.
-
-## Español
-
-Este repositorio contiene un parche temporal para el fallo intermitente de escaneo Wi-Fi observado en una AYN Thor con firmware `.377`.
-
-Uso recomendado:
-
-1. Descarga la APK firmada de la última prerelease.
-2. Abre **Thor Wi-Fi Recovery** y pulsa **Comprobar escáner** cuando Android no muestre redes.
-3. **Recuperar Wi-Fi** solo se habilita si la app confirma la firma de fallo validada en `.377`.
-4. Tras la recuperación, la app comprueba automáticamente si el escáner volvió a `IdleState`.
-5. **Copiar informe de diagnóstico** genera un informe local sanitizado para compartir resultados sin nombres de red, direcciones hardware, IP ni contraseñas.
-
-`Thor_WiFi_Recovery.sh` se mantiene como alternativa manual mediante **Run script as Root**.
-
-No borra ROMs, emuladores, redes guardadas ni la configuración del frontend. Es un workaround experimental, no una actualización oficial de AYN.
+Third-party notices, including the Nunito font license and the upstream Binder-reference attribution, are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 

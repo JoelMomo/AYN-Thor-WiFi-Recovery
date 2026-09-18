@@ -25,6 +25,55 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
+      - name: Verify translation resource parity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          res = pathlib.Path("app/src/main/res")
+          default_root = ET.parse(res / "values" / "strings.xml").getroot()
+          required = {
+              node.attrib["name"]
+              for node in default_root
+              if node.tag in {"string", "plurals"}
+              and node.attrib.get("translatable", "true") != "false"
+          }
+
+          locale_root = ET.parse(res / "xml" / "locales_config.xml").getroot()
+          android_name = "{http://schemas.android.com/apk/res/android}name"
+          failures = []
+
+          for locale in (node.attrib[android_name] for node in locale_root):
+              if locale == "en":
+                  continue
+              parts = locale.split("-")
+              qualifier = f"values-{parts[0]}"
+              if len(parts) == 2 and len(parts[1]) == 2:
+                  qualifier += f"-r{parts[1].upper()}"
+              path = res / qualifier / "strings.xml"
+              if not path.exists():
+                  failures.append(f"{locale}: missing {path}")
+                  continue
+              root = ET.parse(path).getroot()
+              present = {
+                  node.attrib["name"]
+                  for node in root
+                  if node.tag in {"string", "plurals"}
+              }
+              missing = sorted(required - present)
+              extra = sorted(present - required)
+              if missing or extra:
+                  failures.append(
+                      f"{locale}: missing={missing or '[]'} extra={extra or '[]'}"
+                  )
+
+          if failures:
+              raise SystemExit("\n".join(failures))
+          print("All localized resources match the default translatable resource set.")
+          PY
+
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
 

@@ -118,6 +118,20 @@ Direct device testing found:
 This is still a recovery workaround for the stock firmware defect, not a permanent
 firmware modification.
 
+## Beta15 localization, UI and validation pass
+
+`v0.3.0-beta15` is a UI/documentation hardening pass; it does not widen the recovery signature or add new recovery commands.
+
+The physical Thor was used to validate the status-card animation. A screen recording of the previous beta showed that pressing **Check Wi-Fi** restarted the liquid transition while the diagnostic was still running. Beta15 separates the temporary **Checking…** presentation from the status fill: the ambient wave continues without being reset, and the liquid fill changes only when a real diagnostic result arrives. A second device recording was used to confirm the regression was removed.
+
+The app now ships twelve UI languages: English, Spanish, Catalan, Galician, Basque, Portuguese, German, French, Italian, Russian, Japanese and Simplified Chinese. All localized files are checked against the default translatable resource set, and CI now rejects missing or extra localized resources. The generic `values-es` resource is intentionally retained so Android Spanish variants such as `es-419` resolve to Spanish rather than English.
+
+A compact **+ apps** link was also added to the header. It delegates to the system browser and opens the developer's GitHub repository list, providing a stable path to CarePad and future projects without adding `android.permission.INTERNET` to this app.
+
+This pass also removed unused UI helpers, fields, strings and imports identified during lint/manual review. Unit tests, Android lint and signed release assembly are rerun after these changes before publishing.
+
+During the final physical screenshot pass, the fault was reproduced again after a reboot: the framework exposed no scan results and the single-scan state machine remained in `ScanningState`. The app classified it as a probable lockup and correctly exposed recovery. In this particular reproduction, the recovery attempt did not clear the scanner and the app reported **Scanner still stuck** rather than claiming success. A second attempt also remained stuck. This reinforces that the project is a recovery workaround, not a guaranteed firmware fix; the recovery logic itself was not broadened in beta15.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.
