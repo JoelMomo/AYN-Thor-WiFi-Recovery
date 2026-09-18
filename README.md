@@ -22,7 +22,7 @@ The app deliberately fails closed on unvalidated firmware.
 
 ## Android app
 
-Current development build on `main`: **0.3.0-beta15**
+Current development build on `main`: **0.3.0-beta16**
 
 Latest signed public prerelease: **0.3.0-beta15**
 
@@ -34,7 +34,7 @@ The app:
 - reads Android's Wi-Fi scanner state without starting another framework scan;
 - distinguishes healthy, confirmed, probable, timeout, error and unsupported states;
 - uses low-level radio evidence only when needed;
-- chooses between a framework-only recovery and a deeper Wi-Fi HAL + framework recovery;
+- chooses between a framework-only recovery and a deeper Wi-Fi stack + framework recovery;
 - verifies the scanner after Android returns and can escalate once if the light recovery did not clear the lockup;
 - copies a sanitized local support report;
 - requests **no Internet permission** and contains **no telemetry**;
@@ -47,7 +47,7 @@ The affected `.377` unit was observed with `WifiSingleScanStateMachine` stuck in
 Thor Wi-Fi Recovery uses two recovery levels:
 
 1. **Framework recovery** — restarts Android's runtime/framework when the lower Wi-Fi path still appears alive.
-2. **Deep recovery** — restarts `vendor.wifi_hal_legacy` and then Android's framework when there is no carrier and no low-level AP evidence.
+2. **Deep recovery** — disables Wi-Fi, restarts `vendor.wifi_hal_legacy`, `wificond` and `wpa_supplicant`, re-enables Wi-Fi, lets the stack settle, then restarts Android's framework.
 
 After recovery, the app waits for Android to settle, checks the scanner again, retries once, and can escalate from the light path to the deep path if necessary.
 
@@ -164,7 +164,7 @@ GitHub Actions runs on pushes to `main` and pull requests. CI uses JDK 17 and ru
 - unit tests;
 - Android lint;
 - APK compilation;
-- translation-resource parity for every locale declared in `locales_config.xml`;
+- translation-resource parity for every locale declared in `locales_config.xml`, plus a UTF-8 mojibake guard;
 - a built-APK check that rejects `android.permission.INTERNET`;
 - source checks against obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
 - debug APK and lint-report artifact upload.

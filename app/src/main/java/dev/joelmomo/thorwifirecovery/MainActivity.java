@@ -346,7 +346,9 @@ public class MainActivity extends Activity {
         worker.execute(() -> {
             try {
                 if (fullDiagnosis) {
-                    if (postRecovery) Thread.sleep(POST_RECOVERY_SETTLE_MS);
+                    if (postRecovery) {
+                        Thread.sleep(POST_RECOVERY_SETTLE_MS);
+                    }
                     DiagnosticEngine.Snapshot snapshot =
                             DiagnosticEngine.parseDiagnosis(ThorRootBridge.diagnoseScanner());
                     if (postRecovery
@@ -362,17 +364,18 @@ public class MainActivity extends Activity {
                                     + " scannerRc=" + result.scannerRc
                                     + " radioAps=" + result.radioAps
                                     + " scannerState=" + result.scannerStateLine);
-                    if (postRecovery
-                            && isRecoverableLockup(result.diagnosis())
-                            && prefs().getInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP)
-                                    == RECOVERY_STAGE_LIGHT) {
-                        boolean escalated = prefs().edit()
-                                .putInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP).commit();
-                        if (escalated) {
-                            android.util.Log.i("ThorWiFiRecovery",
-                                    "recoveryEscalation=wifi-hal+zygote");
-                            ThorRootBridge.recover(true);
-                            return;
+                    if (postRecovery && isRecoverableLockup(result.diagnosis())) {
+                        int recoveryStage = prefs().getInt(
+                                KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP);
+                        if (recoveryStage == RECOVERY_STAGE_LIGHT) {
+                            boolean escalated = prefs().edit()
+                                    .putInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP).commit();
+                            if (escalated) {
+                                android.util.Log.i("ThorWiFiRecovery",
+                                        "recoveryEscalation=wifi-stack+zygote");
+                                ThorRootBridge.recover(true);
+                                return;
+                            }
                         }
                     }
                     runOnUiThread(() -> showDiagnosis(result, postRecovery));
@@ -558,9 +561,9 @@ public class MainActivity extends Activity {
     }
     private void runRecovery() {
         setBusy(true);
-        final boolean resetWifiHal =
+        final boolean resetWifiStack =
                 lastSnapshot != null && lastSnapshot.requiresHalReset();
-        final int recoveryStage = resetWifiHal
+        final int recoveryStage = resetWifiStack
                 ? RECOVERY_STAGE_DEEP : RECOVERY_STAGE_LIGHT;
         boolean persisted = prefs().edit()
                 .putBoolean(KEY_RECOVERY_PENDING, true)
@@ -575,10 +578,10 @@ public class MainActivity extends Activity {
         }
 
         android.util.Log.i("ThorWiFiRecovery",
-                "recoveryMode=" + (resetWifiHal ? "wifi-hal+zygote" : "zygote"));
+                "recoveryMode=" + (resetWifiStack ? "wifi-stack+zygote" : "zygote"));
         worker.execute(() -> {
             try {
-                ThorRootBridge.recover(resetWifiHal);
+                ThorRootBridge.recover(resetWifiStack);
             } catch (Exception e) {
                 clearRecoveryState();
                 runOnUiThread(() -> showServiceError(e, false));

@@ -132,6 +132,18 @@ This pass also removed unused UI helpers, fields, strings and imports identified
 
 During the final physical screenshot pass, the fault was reproduced again after a reboot: the framework exposed no scan results and the single-scan state machine remained in `ScanningState`. The app classified it as a probable lockup and correctly exposed recovery. In this particular reproduction, the recovery attempt did not clear the scanner and the app reported **Scanner still stuck** rather than claiming success. A second attempt also remained stuck. This reinforces that the project is a recovery workaround, not a guaranteed firmware fix; the recovery logic itself was not broadened in beta15.
 
+## Beta16 Unicode and deep-recovery hardening
+
+`v0.3.0-beta16` fixes two independent issues found during physical-device validation.
+
+Seven localized resource files had been accidentally stored with reversible UTF-8 mojibake. This affected characters such as `ó`, middle dots, Cyrillic, Japanese and Chinese text. The resources were repaired as UTF-8, and CI now rejects the same reversible mojibake pattern in future localized files. Nunito itself was not the cause: its bundled cmap covers every Latin and Cyrillic code point used by the app. Japanese and Simplified Chinese continue to use Android's system CJK fallback, which was visually checked on the physical Thor. All twelve languages were re-captured in both dark and light themes after the repair.
+
+Recovery was also hardened after beta15 reproduced a lockup that survived the earlier HAL-only escalation. The deep path now disables Wi-Fi, restarts `vendor.wifi_hal_legacy`, `wificond` and `wpa_supplicant`, re-enables Wi-Fi, waits for the stack to settle, and finally restarts Android's framework. The light path remains framework-only, and a persistent recoverable lock can escalate once from light to deep recovery.
+
+A lower PCI/driver reset was investigated on the physical Thor. Unbinding and rebinding the Qualcomm `cnss_pci` device did reinitialize the Wi-Fi firmware and produced fresh scan results, but experimental sequences could also leave Android's Wi-Fi services stopped or Wi-Fi disabled during handoff. That path is therefore intentionally **not shipped** in beta16; the app keeps the less invasive userspace Wi-Fi-stack reset as its deepest automatic recovery.
+
+The physical Thor was used throughout this pass. The scanner was repeatedly driven into `ScanningState`, recovery availability was confirmed in the UI, and the device was returned to a healthy `IdleState` with scan results and a live carrier before final validation. This remains a firmware workaround rather than a guaranteed fix.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.

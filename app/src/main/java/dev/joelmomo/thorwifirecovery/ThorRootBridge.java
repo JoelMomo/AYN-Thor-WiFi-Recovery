@@ -49,9 +49,10 @@ final class ThorRootBridge {
             boolean carrierUp = "1".equals(carrier);
             if (scannerScanning) {
                 if (!carrierUp) {
-                    execute("/vendor/bin/wpa_cli -i wlan0 scan");
+                    execute("timeout 5 /vendor/bin/wpa_cli -i wlan0 scan 2>/dev/null");
                     Thread.sleep(4000);
-                    radioResults = execute("/vendor/bin/wpa_cli -i wlan0 scan_results");
+                    radioResults = execute(
+                            "timeout 5 /vendor/bin/wpa_cli -i wlan0 scan_results 2>/dev/null");
                 } else {
                     Thread.sleep(2000);
                 }
@@ -76,10 +77,14 @@ final class ThorRootBridge {
                 + "\n__RADIO_RESULTS__\n" + radioResults;
     }
 
-    static void recover(boolean resetWifiHal) throws Exception {
-        if (resetWifiHal) {
-            execute("setprop ctl.restart vendor.wifi_hal_legacy; "
-                    + "sleep 2; setprop ctl.restart zygote");
+    static void recover(boolean resetWifiStack) throws Exception {
+        if (resetWifiStack) {
+            execute("svc wifi disable; sleep 3; "
+                    + "setprop ctl.restart vendor.wifi_hal_legacy; "
+                    + "setprop ctl.restart wificond; "
+                    + "setprop ctl.restart wpa_supplicant; sleep 4; "
+                    + "timeout 10 svc wifi enable; sleep 12; "
+                    + "setprop ctl.restart zygote");
         } else {
             execute("setprop ctl.restart zygote");
         }
