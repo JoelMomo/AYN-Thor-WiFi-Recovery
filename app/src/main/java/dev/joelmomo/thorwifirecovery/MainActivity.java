@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
     private boolean diagnosisAllowed = true;
     private boolean detailsExpanded;
     private boolean isLightTheme;
+    private boolean suppressStatusAnimation;
     private int colorBg, colorCard, colorCardSoft, colorOutline, colorAccent;
     private int colorTextPrimary, colorTextSecondary, colorTextMuted, colorButtonText;
     private int colorChipValidated, colorChipNeutral, colorDetailText;
@@ -670,13 +671,13 @@ public class MainActivity extends Activity {
     private void toggleTheme() {
         final boolean nextLight = !isLightTheme;
         themeToggle.setEnabled(false);
-        View decorView = getWindow().getDecorView();
+        ViewGroup decor = (ViewGroup) getWindow().getDecorView();
         Bitmap oldFrame = null;
-        if (decorView.getWidth() > 0 && decorView.getHeight() > 0) {
+        if (decor.getWidth() > 0 && decor.getHeight() > 0) {
             try {
                 oldFrame = Bitmap.createBitmap(
-                        decorView.getWidth(), decorView.getHeight(), Bitmap.Config.ARGB_8888);
-                decorView.draw(new Canvas(oldFrame));
+                        decor.getWidth(), decor.getHeight(), Bitmap.Config.ARGB_8888);
+                decor.draw(new Canvas(oldFrame));
             } catch (Exception ignored) {
                 oldFrame = null;
             }
@@ -684,18 +685,32 @@ public class MainActivity extends Activity {
 
         final int oldBar = getWindow().getStatusBarColor();
         final Bitmap overlayBitmap = oldFrame;
+        final ImageView overlay;
+        if (overlayBitmap != null) {
+            overlay = new ImageView(this);
+            overlay.setScaleType(ImageView.ScaleType.FIT_XY);
+            overlay.setImageBitmap(overlayBitmap);
+            overlay.setAlpha(1f);
+            decor.addView(overlay, new ViewGroup.LayoutParams(-1, -1));
+            overlay.bringToFront();
+        } else {
+            overlay = null;
+        }
+
         isLightTheme = nextLight;
         prefs().edit().putBoolean(KEY_LIGHT_THEME, nextLight).apply();
         if (ambientAnimator != null) ambientAnimator.cancel();
         if (statusAnimator != null) statusAnimator.cancel();
         applyPalette();
-        buildUi();
 
+        suppressStatusAnimation = true;
+        buildUi();
         if (lastSnapshot != null) {
             showDiagnosis(lastSnapshot, false);
         } else if (lastDeviceInfo != null) {
             showProbe(lastDeviceInfo);
         }
+        suppressStatusAnimation = false;
         startAmbientAnimation();
 
         getWindow().getDecorView().setSystemUiVisibility(isLightTheme
@@ -703,15 +718,10 @@ public class MainActivity extends Activity {
                 : 0);
         animateSystemBars(oldBar, colorBg);
 
-        if (overlayBitmap == null) return;
-        ViewGroup decor = (ViewGroup) getWindow().getDecorView();
-        ImageView overlay = new ImageView(this);
-        overlay.setScaleType(ImageView.ScaleType.FIT_XY);
-        overlay.setImageBitmap(overlayBitmap);
-        decor.addView(overlay, new ViewGroup.LayoutParams(-1, -1));
+        if (overlay == null) return;
         overlay.bringToFront();
-        overlay.animate().alpha(0f).setDuration(560)
-                .setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f))
+        overlay.animate().alpha(0f).setStartDelay(40).setDuration(720)
+                .setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f))
                 .withEndAction(() -> {
                     decor.removeView(overlay);
                     overlayBitmap.recycle();
@@ -720,8 +730,8 @@ public class MainActivity extends Activity {
 
     private void animateSystemBars(int fromColor, int toColor) {
         ValueAnimator bars = ValueAnimator.ofObject(new ArgbEvaluator(), fromColor, toColor);
-        bars.setDuration(560);
-        bars.setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f));
+        bars.setDuration(720);
+        bars.setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f));
         bars.addUpdateListener(animation -> {
             int color = (int) animation.getAnimatedValue();
             getWindow().setStatusBarColor(color);
@@ -802,6 +812,17 @@ public class MainActivity extends Activity {
         }
         int targetFill = blendColors(colorCard, targetColor, isLightTheme ? 0.105f : 0.135f);
         if (statusAnimator != null) statusAnimator.cancel();
+
+        if (suppressStatusAnimation) {
+            statusTitle.setTextColor(targetColor);
+            statusRail.setBackground(roundRect(targetColor, 999));
+            statusDrawable.beginTransition(targetFill, targetFill);
+            statusDrawable.setProgress(1f);
+            currentStatusColor = targetColor;
+            currentStatusFill = targetFill;
+            return;
+        }
+
         final int startColor = currentStatusColor;
         final int startFill = currentStatusFill;
         final ArgbEvaluator evaluator = new ArgbEvaluator();
@@ -1122,17 +1143,20 @@ public class MainActivity extends Activity {
             float drift = (float) Math.sin(phase * 0.5f) * dp(2.5f);
             float level = rect.centerY() + dp(14) + drift;
 
-            ambientPaint.setColor(isLightTheme ? Color.WHITE : colorAccent);
-            ambientPaint.setAlpha(isLightTheme ? 18 : 13);
+            int firstColor = isLightTheme
+                    ? blendColors(targetColor, colorAccent, 0.68f)
+                    : colorAccent;
+            ambientPaint.setColor(firstColor);
+            ambientPaint.setAlpha(isLightTheme ? 34 : 13);
             buildHorizontalWave(ambientPath, level, dp(5.5f),
                     phase, 1.15f);
             canvas.drawPath(ambientPath, ambientPaint);
 
             int secondColor = isLightTheme
-                    ? blendColors(targetColor, colorAccent, 0.22f)
+                    ? Color.WHITE
                     : Color.BLACK;
             ambientPaint2.setColor(secondColor);
-            ambientPaint2.setAlpha(isLightTheme ? 10 : 12);
+            ambientPaint2.setAlpha(isLightTheme ? 42 : 12);
             buildHorizontalWave(ambientPath2, level + dp(13),
                     dp(4.2f), -phase * 0.82f + 1.8f, 1.45f);
             canvas.drawPath(ambientPath2, ambientPaint2);

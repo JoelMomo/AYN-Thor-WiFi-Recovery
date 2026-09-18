@@ -16,7 +16,7 @@
     <string name="status_recovery_success">Wi-Fi recovered</string>
     <string name="status_recovery_failed">Scanner still stuck</string>
     <string name="status_recovery_unverified">Recovery could not be verified</string>
-    <string name="diagnose">Check Wi-Fi status</string>
+    <string name="diagnose">Check Wi-Fi</string>
     <string name="recover">Recover Wi-Fi</string>
     <string name="recover_probable">Try Wi-Fi recovery</string>
     <string name="validated_firmware_detail">This .377 build is supported. Run a check if the network list is empty.</string>
