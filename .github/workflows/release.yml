@@ -116,9 +116,9 @@ jobs:
             echo
             echo "## APK"
             echo
-            echo "\\`\\`\\`"
+            printf '%s\n' '```'
             cat "release-artifacts/$APK_NAME.sha256"
-            echo "\\`\\`\\`"
+            printf '%s\n' '```'
             echo
             echo "Built automatically from the tagged commit. The workflow verifies the release signature and confirms that the APK has no Internet permission."
           } > release-artifacts/RELEASE_NOTES.md
