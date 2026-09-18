@@ -100,12 +100,13 @@ If you previously installed one of the old debug APKs, uninstall it once before 
 
 ## More apps
 
-The compact **+ apps** control in the app header opens JoelMomo's GitHub repository list in the system browser. This keeps the Wi-Fi utility independent while providing a future-proof route to other projects, including **CarePad** and any later apps such as the planned keyboard.
+A dedicated **Thor apps** landing page now lives in `docs/` and is prepared for GitHub Pages. It presents the public projects directly instead of dropping users into a generic repository list:
 
 - [CarePad](https://github.com/JoelMomo/CarePad)
-- [More projects by JoelMomo](https://github.com/JoelMomo?tab=repositories)
+- [RuneBoard](https://github.com/JoelMomo/RuneBoard)
+- [Project changelog](CHANGELOG.md)
 
-Opening these links is delegated to the browser; Thor Wi-Fi Recovery still requests no Internet permission itself.
+The compact **+ apps** control will switch to the landing URL once the Pages site is enabled and ready to use. Opening external links remains delegated to the system browser; Thor Wi-Fi Recovery still requests no Internet permission itself.
 
 ### Release signing certificate
 
