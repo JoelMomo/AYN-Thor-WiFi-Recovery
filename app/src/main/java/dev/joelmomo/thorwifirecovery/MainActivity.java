@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
     private TextView detailCarrier;
     private TextView detailAps;
     private Button diagnoseButton;
-    private Button recoverButton;
+    private TextView recoverButton;
     private Button reportButton;
     private Button projectButton;
     private DiagnosticEngine.Snapshot lastSnapshot;
@@ -217,7 +217,7 @@ public class MainActivity extends Activity {
         recoveryHint.setVisibility(View.INVISIBLE);
         recoveryStage.addView(recoveryHint,
                 new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
-        recoverButton = button(getString(R.string.recover), colorAccent, colorButtonText);
+        recoverButton = recoveryActionButton(getString(R.string.recover));
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
         recoveryCenter = new LinearLayout(this);
@@ -782,7 +782,14 @@ public class MainActivity extends Activity {
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
     }
 
-    private TextView infoButton(String description) { TextView v=iconButton("i",description); v.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD); return v; }
+    private TextView infoButton(String description) {
+        TextView v = iconButton("i", description);
+        v.setTypeface(uiTypeface(true));
+        int fill = blendColors(colorCard, colorAccent, isLightTheme ? 0.075f : 0.10f);
+        int stroke = blendColors(colorOutline, colorAccent, isLightTheme ? 0.18f : 0.24f);
+        v.setBackground(roundRectStroke(fill, stroke, 999, 1));
+        return v;
+    }
     private TextView iconButton(String symbol,String description) { TextView v=text(symbol,17,colorTextPrimary,false); v.setGravity(Gravity.CENTER); v.setContentDescription(description); v.setBackground(roundRectStroke(Color.TRANSPARENT,colorOutline,999,1)); v.setMinWidth(dp(34)); v.setMinHeight(dp(34)); v.setHapticFeedbackEnabled(true); v.setSoundEffectsEnabled(true); return v; }
     private LinearLayout.LayoutParams iconMargin() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(34),dp(34)); p.setMargins(dp(10),0,0,0); return p; }
     private LinearLayout.LayoutParams spinnerParams() { LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(30),dp(30)); p.setMargins(dp(10),0,0,0); return p; }
@@ -860,6 +867,37 @@ public class MainActivity extends Activity {
                 new int[]{start, end});
         drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), colorOutline);
+        return drawable;
+    }
+
+    private TextView recoveryActionButton(String value) {
+        TextView button = text(value, 16, Color.WHITE, true);
+        button.setGravity(Gravity.CENTER);
+        button.setSingleLine(true);
+        button.setMinHeight(dp(58));
+        button.setPadding(dp(18), 0, dp(18), 0);
+        button.setBackground(recoveryActionBackground());
+        button.setCompoundDrawablesWithIntrinsicBounds(
+                R.drawable.ic_recovery_action, 0, 0, 0);
+        button.setCompoundDrawablePadding(dp(10));
+        button.setHapticFeedbackEnabled(true);
+        button.setSoundEffectsEnabled(true);
+        return button;
+    }
+
+    private GradientDrawable recoveryActionBackground() {
+        int start = isLightTheme
+                ? Color.rgb(22, 132, 118)
+                : Color.rgb(24, 108, 98);
+        int end = isLightTheme
+                ? Color.rgb(10, 92, 83)
+                : Color.rgb(11, 70, 65);
+        GradientDrawable drawable = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{start, end});
+        drawable.setCornerRadius(dp(17));
+        drawable.setStroke(dp(1), blendColors(
+                colorAccent, Color.WHITE, isLightTheme ? 0.06f : 0.10f));
         return drawable;
     }
 
@@ -1221,14 +1259,18 @@ public class MainActivity extends Activity {
         return layout;
     }
 
+    private android.graphics.Typeface uiTypeface(boolean bold) {
+        return android.graphics.Typeface.create(
+                "sans-serif-rounded",
+                bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+    }
+
     private TextView text(String value, int sp, int color, boolean bold) {
         TextView view = new TextView(this);
         view.setText(value);
         view.setTextSize(sp);
         view.setTextColor(color);
-        view.setTypeface(android.graphics.Typeface.create(
-                bold ? "sans-serif-medium" : "sans-serif",
-                android.graphics.Typeface.NORMAL));
+        view.setTypeface(uiTypeface(bold));
         view.setLineSpacing(0, 1.10f);
         return view;
     }
@@ -1237,7 +1279,7 @@ public class MainActivity extends Activity {
         Button button = new Button(this);
         button.setText(value);
         button.setTextSize(16);
-        button.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        button.setTypeface(uiTypeface(true));
         button.setTextColor(foreground);
         button.setAllCaps(false);
         button.setMinHeight(dp(54));

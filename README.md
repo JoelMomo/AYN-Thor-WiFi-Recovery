@@ -15,9 +15,10 @@ This is **not an official AYN fix** and it does not modify the firmware.
 
 ## Android app (beta)
 
-The repository also contains an Android app in `app/`. Current beta: `0.3.0-beta11`.
+The repository also contains an Android app in `app/`. Current development beta: `0.3.0-beta13` (latest public prerelease: `0.3.0-beta11`).
 
-- UI language follows Android's system language; English and Spanish are included.
+- UI language follows Android's system/app language; English, Spanish, German, French, Italian and Simplified Chinese are included.
+- Android 13 exposes these translations through the system per-app language selector.
 - It uses AYN's built-in `PServerBinder` service for a fixed, narrow set of diagnostic/recovery commands.
 - The Binder invocation pattern is adapted from `parthi1994/ayn-thor-wifi-recovery` under MIT; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - The diagnostic does **not** start an Android framework scan. It reads the `WifiSingleScanStateMachine` state with a bounded `dumpsys wifiscanner` query.
@@ -61,7 +62,7 @@ Do not use it for ordinary password, authentication, DHCP or "connected without 
 
 1. Download the signed APK from the latest GitHub prerelease.
 2. Install and open **Thor Wi-Fi Recovery**.
-3. Tap **Check scanner** when Android shows the affected symptom.
+3. Tap **Check Wi-Fi** when Android shows the affected symptom.
 4. **Recover Wi-Fi** is enabled only when the validated lockup is confirmed.
 5. Use **Copy diagnostic report** if you want to share a sanitized result for troubleshooting.
 
