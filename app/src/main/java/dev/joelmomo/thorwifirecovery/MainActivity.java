@@ -26,6 +26,7 @@ import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -63,7 +64,7 @@ public class MainActivity extends Activity {
     private View statusRail;
     private LinearLayout detailsBody;
     private LinearLayout deviceSummaryBody;
-    private Button detailsToggle;
+    private ImageButton detailsToggle;
     private TextView summaryAndroid, summaryModel, summaryFirmware, summaryInterface;
     private TextView detailSupport;
     private TextView detailScanner;
@@ -261,20 +262,17 @@ public class MainActivity extends Activity {
         diagnoseButton = toolButton(getString(R.string.diagnose), R.drawable.ic_tool_scan);
         reportButton = toolButton(getString(R.string.copy_full_report_short), R.drawable.ic_tool_report);
         reportButton.setEnabled(false);
-        detailsToggle = toolButton(getString(R.string.details_show_short), R.drawable.ic_tool_details);
         diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
         reportButton.setOnClickListener(v -> { interactionFeedback(v); copyDiagnosticReport(); });
-        detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
         historyButton = toolButton(getString(R.string.history_short), R.drawable.ic_tool_history);
         problemButton = toolButton(getString(R.string.report_problem_short), R.drawable.ic_tool_issue);
         historyButton.setOnClickListener(v -> { interactionFeedback(v); showHistory(); });
         problemButton.setOnClickListener(v -> { interactionFeedback(v); reportProblem(); });
 
-        // Keep all tools on one landscape row. A second 58 dp row is clipped on
-        // the Thor's 1920x1080 layout because the lower dashboard card is compact.
+        // Four primary actions fit comfortably on one landscape row. Device
+        // details live with the device card instead of competing for tool width.
         toolRow.addView(diagnoseButton, weightedButton(0, dp(3)));
         toolRow.addView(reportButton, weightedButton(dp(3), dp(3)));
-        toolRow.addView(detailsToggle, weightedButton(dp(3), dp(3)));
         toolRow.addView(historyButton, weightedButton(dp(3), dp(3)));
         toolRow.addView(problemButton, weightedButton(dp(3), 0));
         toolsCard.addView(toolRow, new LinearLayout.LayoutParams(-1, 0, 1f));
@@ -282,7 +280,15 @@ public class MainActivity extends Activity {
         LinearLayout deviceCard = column();
         deviceCard.setPadding(dp(16), dp(14), dp(16), dp(14));
         deviceCard.setBackground(panelBackground());
-        deviceCard.addView(sectionLabel(getString(R.string.section_device)));
+        LinearLayout deviceHeader = new LinearLayout(this);
+        deviceHeader.setGravity(Gravity.CENTER_VERTICAL);
+        deviceHeader.addView(sectionLabel(getString(R.string.section_device)),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        detailsToggle = disclosureButton();
+        detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
+        deviceHeader.addView(detailsToggle,
+                new LinearLayout.LayoutParams(dp(38), dp(34)));
+        deviceCard.addView(deviceHeader);
         FrameLayout deviceContent = new FrameLayout(this);
         LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(-1, 0, 1f);
         contentParams.setMargins(0, dp(9), 0, 0);
@@ -323,7 +329,7 @@ public class MainActivity extends Activity {
         if (detailsExpanded) {
             deviceSummaryBody.setVisibility(View.GONE);
             detailsBody.setVisibility(View.VISIBLE);
-            detailsToggle.setText(R.string.details_hide_short);
+            updateDetailsToggleIcon();
         }
         if (wide) {
             LinearLayout.LayoutParams topLeft = new LinearLayout.LayoutParams(0, -1, 1.10f);
@@ -1028,6 +1034,33 @@ public class MainActivity extends Activity {
         v.setBackground(roundRectStroke(fill, stroke, 999, 1));
         return v;
     }
+
+    private ImageButton disclosureButton() {
+        ImageButton button = new ImageButton(this);
+        button.setPadding(dp(7), dp(7), dp(7), dp(7));
+        button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        button.setBackground(roundRectStroke(
+                blendColors(colorCard, colorAccent, isLightTheme ? 0.085f : 0.065f),
+                blendColors(colorOutline, colorAccent, isLightTheme ? 0.26f : 0.22f),
+                999, 1));
+        button.setHapticFeedbackEnabled(true);
+        button.setSoundEffectsEnabled(true);
+        updateDetailsToggleIcon(button);
+        return button;
+    }
+
+    private void updateDetailsToggleIcon() {
+        if (detailsToggle != null) updateDetailsToggleIcon(detailsToggle);
+    }
+
+    private void updateDetailsToggleIcon(ImageButton button) {
+        button.setImageResource(detailsExpanded
+                ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
+        Drawable icon = button.getDrawable();
+        if (icon != null) icon.setTint(colorAccent);
+        button.setContentDescription(getString(detailsExpanded
+                ? R.string.details_hide_short : R.string.details_show_short));
+    }
     private TextView iconButton(String symbol,String description) { TextView v=text(symbol,17,colorTextPrimary,false); v.setGravity(Gravity.CENTER); v.setContentDescription(description); v.setBackground(roundRectStroke(Color.TRANSPARENT,colorOutline,999,1)); v.setMinWidth(dp(34)); v.setMinHeight(dp(34)); v.setHapticFeedbackEnabled(true); v.setSoundEffectsEnabled(true); return v; }
 
     private TextView compactLinkButton(String label, String description) {
@@ -1235,16 +1268,16 @@ public class MainActivity extends Activity {
 
     private Button toolButton(String value, int iconRes) {
         Button button = button(value, Color.TRANSPARENT, colorTextPrimary);
-        button.setTextSize(12);
+        button.setTextSize(8.5f);
         button.setMinHeight(dp(58));
-        button.setPadding(dp(5), 0, dp(5), 0);
+        button.setPadding(dp(4), 0, dp(4), 0);
         button.setBackground(roundRectStroke(
                 blendColors(colorCard, colorAccent, isLightTheme ? 0.02f : 0.035f),
                 colorOutline, 14, 1));
         button.setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0);
         android.graphics.drawable.Drawable icon = button.getCompoundDrawables()[0];
         if (icon != null) icon.setTint(colorAccent);
-        button.setCompoundDrawablePadding(dp(7));
+        button.setCompoundDrawablePadding(dp(4));
         return button;
     }
 
@@ -1349,7 +1382,7 @@ public class MainActivity extends Activity {
         incoming.animate().alpha(1f).translationY(0f).setStartDelay(60).setDuration(210)
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f)).start();
         detailsExpanded = show;
-        detailsToggle.setText(show ? R.string.details_hide_short : R.string.details_show_short);
+        updateDetailsToggleIcon();
     }
 
     private void updateDetails(DiagnosticEngine.DeviceInfo info,
