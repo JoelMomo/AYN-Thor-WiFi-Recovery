@@ -119,9 +119,7 @@ public class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo = new ImageView(this);
-        logo.setImageResource(isLightTheme
-                ? R.drawable.ic_wifi_recovery_header_light
-                : R.drawable.ic_wifi_recovery_header_dark);
+        logo.setImageResource(R.drawable.app_brand_icon);
         LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(50), dp(50));
         logoParams.setMargins(0, 0, dp(14), 0);
         header.addView(logo, logoParams);
