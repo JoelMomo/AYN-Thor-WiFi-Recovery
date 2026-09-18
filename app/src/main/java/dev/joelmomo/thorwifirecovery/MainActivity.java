@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "recovery_state";
     private static final String KEY_RECOVERY_PENDING = "recovery_pending";
     private static final String KEY_RECOVERY_STAGE = "recovery_stage";
+    private static final String KEY_RECOVERY_STARTED_AT = "recovery_started_at";
     private static final String KEY_LIGHT_THEME = "light_theme";
     private static final int RECOVERY_STAGE_LIGHT = 1;
     private static final int RECOVERY_STAGE_DEEP = 2;
@@ -50,6 +51,7 @@ public class MainActivity extends Activity {
     private TextView statusTitle;
     private TextView statusDetail;
     private TextView recoveryHint;
+    private TextView recoveryResultBadge;
     private TextView statusInfoButton;
     private ProgressBar statusSpinner;
     private TextView themeToggle;
@@ -70,12 +72,17 @@ public class MainActivity extends Activity {
     private Button diagnoseButton;
     private RecoveryActionView recoverButton;
     private Button reportButton;
+    private Button historyButton;
+    private Button problemButton;
     private DiagnosticEngine.Snapshot lastSnapshot;
     private DiagnosticEngine.DeviceInfo lastDeviceInfo;
     private boolean diagnosisAllowed = true;
     private boolean detailsExpanded;
     private boolean isLightTheme;
     private boolean suppressStatusAnimation;
+    private RecoveryOutcome lastRecoveryOutcome = RecoveryOutcome.NONE;
+    private long lastRecoveryDurationMs;
+    private int lastRecoveryStage;
     private int colorBg, colorCard, colorCardSoft, colorOutline, colorAccent;
     private int colorTextPrimary, colorTextSecondary, colorTextMuted;
     private int colorChipValidated, colorChipNeutral, colorDetailText;
@@ -85,6 +92,13 @@ public class MainActivity extends Activity {
     private ValueAnimator statusAnimator;
     private ValueAnimator ambientAnimator;
     private LiquidStatusDrawable statusDrawable;
+
+    private enum RecoveryOutcome {
+        NONE,
+        RECOVERED,
+        STILL_STUCK,
+        UNVERIFIED
+    }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -223,9 +237,16 @@ public class MainActivity extends Activity {
         recoverButton = recoveryActionButton(getString(R.string.recover));
         recoverButton.setEnabled(false);
         recoverButton.setOnClickListener(v -> { interactionFeedback(v); confirmRecovery(); });
-        recoveryCenter = new LinearLayout(this);
+        recoveryCenter = column();
         recoveryCenter.setGravity(Gravity.CENTER);
         recoveryCenter.addView(recoverButton, new LinearLayout.LayoutParams(-1, -2));
+        recoveryResultBadge = text("", 12, colorTextPrimary, true);
+        recoveryResultBadge.setGravity(Gravity.CENTER);
+        recoveryResultBadge.setPadding(dp(12), dp(7), dp(12), dp(7));
+        recoveryResultBadge.setVisibility(View.GONE);
+        LinearLayout.LayoutParams resultParams = new LinearLayout.LayoutParams(-1, -2);
+        resultParams.setMargins(0, dp(8), 0, 0);
+        recoveryCenter.addView(recoveryResultBadge, resultParams);
         recoveryStage.addView(recoveryCenter,
                 new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
         recoveryCard.addView(recoveryStage, new LinearLayout.LayoutParams(-1, 0, 1f));
@@ -236,9 +257,9 @@ public class MainActivity extends Activity {
         toolsCard.addView(sectionLabel(getString(R.string.section_tools)));
         LinearLayout toolRow = new LinearLayout(this);
         toolRow.setGravity(Gravity.CENTER_VERTICAL);
-        toolRow.setPadding(0, dp(10), 0, 0);
+        toolRow.setPadding(0, dp(6), 0, 0);
         diagnoseButton = toolButton(getString(R.string.diagnose), R.drawable.ic_tool_scan);
-        reportButton = toolButton(getString(R.string.copy_report_short), R.drawable.ic_tool_report);
+        reportButton = toolButton(getString(R.string.copy_full_report_short), R.drawable.ic_tool_report);
         reportButton.setEnabled(false);
         detailsToggle = toolButton(getString(R.string.details_show_short), R.drawable.ic_tool_details);
         diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
@@ -247,7 +268,21 @@ public class MainActivity extends Activity {
         toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
         toolRow.addView(reportButton, weightedButton(dp(5), dp(5)));
         toolRow.addView(detailsToggle, weightedButton(dp(5), 0));
-        toolsCard.addView(toolRow, new LinearLayout.LayoutParams(-1, 0, 1f));
+
+        LinearLayout secondaryToolRow = new LinearLayout(this);
+        secondaryToolRow.setGravity(Gravity.CENTER_VERTICAL);
+        secondaryToolRow.setPadding(0, dp(5), 0, 0);
+        historyButton = toolButton(getString(R.string.history_short), R.drawable.ic_tool_history);
+        problemButton = toolButton(getString(R.string.report_problem_short), R.drawable.ic_tool_issue);
+        historyButton.setOnClickListener(v -> { interactionFeedback(v); showHistory(); });
+        problemButton.setOnClickListener(v -> { interactionFeedback(v); reportProblem(); });
+        secondaryToolRow.addView(historyButton, weightedButton(0, dp(5)));
+        secondaryToolRow.addView(problemButton, weightedButton(dp(5), 0));
+
+        LinearLayout toolRows = column();
+        toolRows.addView(toolRow, new LinearLayout.LayoutParams(-1, -2));
+        toolRows.addView(secondaryToolRow, new LinearLayout.LayoutParams(-1, -2));
+        toolsCard.addView(toolRows, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         LinearLayout deviceCard = column();
         deviceCard.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -328,15 +363,27 @@ public class MainActivity extends Activity {
         footer.setPadding(dp(2), dp(9), dp(2), 0);
         buildInfo = text(getString(R.string.build_info, BuildConfig.VERSION_NAME,
                 getString(R.string.unknown_value)), 10, colorTextMuted, false);
-        TextView about = text(getString(R.string.about), 10, colorTextMuted, false);
+        TextView about = text(getString(R.string.about_technical), 10, colorAccent, true);
         footer.addView(buildInfo, new LinearLayout.LayoutParams(0, -2, 1f));
         about.setGravity(Gravity.END);
+        about.setContentDescription(getString(R.string.about_technical));
+        about.setPadding(dp(10), dp(4), dp(2), dp(4));
+        about.setOnClickListener(v -> {
+            interactionFeedback(v);
+            startActivity(new Intent(this, AboutActivity.class));
+        });
         footer.addView(about, new LinearLayout.LayoutParams(0, -2, 1f));
         root.addView(footer);
         setContentView(root, new ViewGroup.LayoutParams(-1, -1));
     }
 
     private void runProbe(boolean fullDiagnosis, boolean postRecovery) {
+        if (fullDiagnosis && !postRecovery) {
+            lastRecoveryOutcome = RecoveryOutcome.NONE;
+            lastRecoveryDurationMs = 0L;
+            lastRecoveryStage = 0;
+            hideRecoveryResult();
+        }
         setBusy(true);
         statusTitle.setText(postRecovery ? R.string.status_verifying : R.string.status_checking);
         statusDetail.setText("");
@@ -362,6 +409,9 @@ public class MainActivity extends Activity {
                                     + " scannerRc=" + result.scannerRc
                                     + " radioAps=" + result.radioAps
                                     + " scannerState=" + result.scannerStateLine);
+                    if (!postRecovery) {
+                        HistoryStore.recordCheck(this, result.diagnosis());
+                    }
                     if (postRecovery && isRecoverableLockup(result.diagnosis())) {
                         int recoveryStage = prefs().getInt(
                                 KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP);
@@ -424,8 +474,14 @@ public class MainActivity extends Activity {
         updateBuildInfo(snapshot.device);
         updateDetails(snapshot.device, snapshot);
         if (postRecovery) {
+            int recoveryStage = prefs().getInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP);
+            long startedAt = prefs().getLong(KEY_RECOVERY_STARTED_AT, 0L);
+            long durationMs = startedAt > 0L
+                    ? Math.max(0L, System.currentTimeMillis() - startedAt) : 0L;
             clearRecoveryState();
-            showPostRecovery(snapshot);
+            showPostRecovery(snapshot, recoveryStage, durationMs);
+            HistoryStore.recordRecovery(this, recoveryOutcomeName(snapshot.diagnosis()),
+                    recoveryStage, durationMs);
             setBusy(false);
             return;
         }
@@ -492,18 +548,23 @@ public class MainActivity extends Activity {
         setBusy(false);
     }
 
-    private void showPostRecovery(DiagnosticEngine.Snapshot snapshot) {
+    private void showPostRecovery(DiagnosticEngine.Snapshot snapshot,
+                                  int recoveryStage, long durationMs) {
         DiagnosticEngine.Diagnosis diagnosis = snapshot.diagnosis();
+        lastRecoveryStage = recoveryStage;
+        lastRecoveryDurationMs = durationMs;
         recoverButton.setEnabled(false);
         diagnosisAllowed = diagnosis != DiagnosticEngine.Diagnosis.UNSUPPORTED_FIRMWARE
                 && diagnosis != DiagnosticEngine.Diagnosis.WLAN_MISSING;
 
         if (diagnosis == DiagnosticEngine.Diagnosis.READY) {
+            lastRecoveryOutcome = RecoveryOutcome.RECOVERED;
             statusTitle.setText(R.string.status_recovery_success);
             statusDetail.setText(R.string.recovery_success_detail);
             setStatusVisual(StatusTone.OK);
         } else if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED
                 || diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE) {
+            lastRecoveryOutcome = RecoveryOutcome.STILL_STUCK;
             statusTitle.setText(R.string.status_recovery_failed);
             statusDetail.setText(R.string.recovery_failed_detail);
             recoverButton.setText(diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE
@@ -511,10 +572,12 @@ public class MainActivity extends Activity {
             recoverButton.setEnabled(true);
             setStatusVisual(StatusTone.ERROR);
         } else {
+            lastRecoveryOutcome = RecoveryOutcome.UNVERIFIED;
             statusTitle.setText(R.string.status_recovery_unverified);
             statusDetail.setText(postRecoveryDetail(diagnosis, snapshot));
             setStatusVisual(StatusTone.WARNING);
         }
+        applyRecoveryResultVisual();
     }
 
     private CharSequence postRecoveryDetail(DiagnosticEngine.Diagnosis diagnosis,
@@ -538,7 +601,18 @@ public class MainActivity extends Activity {
     }
 
     private void showServiceError(Exception e, boolean postRecovery) {
-        if (postRecovery) clearRecoveryState();
+        if (postRecovery) {
+            int stage = prefs().getInt(KEY_RECOVERY_STAGE, RECOVERY_STAGE_DEEP);
+            long startedAt = prefs().getLong(KEY_RECOVERY_STARTED_AT, 0L);
+            long duration = startedAt > 0L
+                    ? Math.max(0L, System.currentTimeMillis() - startedAt) : 0L;
+            HistoryStore.recordRecovery(this, "SERVICE_ERROR", stage, duration);
+            lastRecoveryOutcome = RecoveryOutcome.UNVERIFIED;
+            lastRecoveryStage = stage;
+            lastRecoveryDurationMs = duration;
+            clearRecoveryState();
+            applyRecoveryResultVisual();
+        }
         lastSnapshot = null;
         statusTitle.setText(postRecovery
                 ? R.string.status_recovery_unverified
@@ -566,6 +640,7 @@ public class MainActivity extends Activity {
         boolean persisted = prefs().edit()
                 .putBoolean(KEY_RECOVERY_PENDING, true)
                 .putInt(KEY_RECOVERY_STAGE, recoveryStage)
+                .putLong(KEY_RECOVERY_STARTED_AT, System.currentTimeMillis())
                 .commit();
         if (!persisted) {
             statusTitle.setText(R.string.status_unavailable);
@@ -596,6 +671,7 @@ public class MainActivity extends Activity {
         prefs().edit()
                 .remove(KEY_RECOVERY_PENDING)
                 .remove(KEY_RECOVERY_STAGE)
+                .remove(KEY_RECOVERY_STARTED_AT)
                 .apply();
     }
 
@@ -616,6 +692,10 @@ public class MainActivity extends Activity {
         recoverButton.setAlpha(recoverButton.isEnabled() ? 1f : 0.35f);
         reportButton.setEnabled(!busy && lastSnapshot != null);
         reportButton.setAlpha(reportButton.isEnabled() ? 1f : 0.55f);
+        historyButton.setEnabled(!busy);
+        historyButton.setAlpha(busy ? 0.55f : 1f);
+        problemButton.setEnabled(!busy && lastSnapshot != null);
+        problemButton.setAlpha(problemButton.isEnabled() ? 1f : 0.55f);
         themeToggle.setEnabled(!busy);
         themeToggle.setAlpha(busy ? 0.55f : 1f);
         moreAppsButton.setEnabled(!busy);
@@ -648,10 +728,157 @@ public class MainActivity extends Activity {
             Toast.makeText(this, R.string.report_unavailable, Toast.LENGTH_SHORT).show();
             return;
         }
-        String report = DiagnosticReport.build(BuildConfig.VERSION_NAME, lastSnapshot);
+        String report = buildFullTechnicalReport();
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("Thor Wi-Fi diagnostic", report));
-        Toast.makeText(this, R.string.report_copied, Toast.LENGTH_SHORT).show();
+        clipboard.setPrimaryClip(ClipData.newPlainText("Thor Wi-Fi technical report", report));
+        Toast.makeText(this, R.string.full_report_copied, Toast.LENGTH_SHORT).show();
+    }
+
+    private String buildFullTechnicalReport() {
+        return DiagnosticReport.buildFull(
+                BuildConfig.VERSION_NAME,
+                BuildConfig.VERSION_CODE,
+                android.os.Build.VERSION.RELEASE,
+                android.os.Build.VERSION.SDK_INT,
+                android.os.Build.MODEL,
+                lastSnapshot,
+                technicalRecoveryMode(),
+                HistoryStore.portableSummary(this));
+    }
+
+    private String technicalRecoveryMode() {
+        int stage = lastRecoveryStage != 0
+                ? lastRecoveryStage : prefs().getInt(KEY_RECOVERY_STAGE, 0);
+        if (stage == RECOVERY_STAGE_DEEP) return "Wi-Fi stack + framework";
+        if (stage == RECOVERY_STAGE_LIGHT) return "framework restart";
+        return "not run in this session";
+    }
+
+    private void showHistory() {
+        java.util.List<HistoryStore.Entry> entries = HistoryStore.read(this);
+        if (entries.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.history_title)
+                    .setMessage(R.string.history_empty)
+                    .setPositiveButton(R.string.close, null)
+                    .show();
+            return;
+        }
+
+        java.text.SimpleDateFormat format = new java.text.SimpleDateFormat(
+                "yyyy-MM-dd HH:mm", java.util.Locale.getDefault());
+        StringBuilder message = new StringBuilder();
+        for (HistoryStore.Entry entry : entries) {
+            if (message.length() > 0) message.append("\n\n");
+            String kind = HistoryStore.KIND_RECOVERY.equals(entry.kind)
+                    ? getString(R.string.history_recovery) : getString(R.string.history_check);
+            message.append(format.format(new java.util.Date(entry.timestampMs)))
+                    .append(" · ").append(kind)
+                    .append("\n").append(entry.result.replace('_', ' '));
+            if (HistoryStore.KIND_RECOVERY.equals(entry.kind)) {
+                String method = entry.recoveryStage == RECOVERY_STAGE_DEEP
+                        ? getString(R.string.history_deep_recovery)
+                        : getString(R.string.history_framework_recovery);
+                message.append("\n").append(method)
+                        .append(" · ").append(formatDuration(entry.durationMs));
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.history_title)
+                .setMessage(message)
+                .setNegativeButton(R.string.clear_history, (dialog, which) -> {
+                    HistoryStore.clear(this);
+                    Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show();
+                })
+                .setPositiveButton(R.string.close, null)
+                .show();
+    }
+
+    private void reportProblem() {
+        if (lastSnapshot == null) {
+            Toast.makeText(this, R.string.report_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.report_problem_title)
+                .setMessage(R.string.report_problem_body)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.continue_label, (dialog, which) -> openProblemReport())
+                .show();
+    }
+
+    private void openProblemReport() {
+        String title = getString(R.string.issue_title_template, lastSnapshot.diagnosis().name());
+        String body = getString(R.string.issue_body_intro) + "\n\n---\n\n"
+                + buildFullTechnicalReport();
+        Uri uri = Uri.parse(getString(R.string.issue_url)).buildUpon()
+                .appendQueryParameter("title", title)
+                .appendQueryParameter("body", body)
+                .build();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.more_apps_unavailable, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String recoveryOutcomeName(DiagnosticEngine.Diagnosis diagnosis) {
+        if (diagnosis == DiagnosticEngine.Diagnosis.READY) return "RECOVERED";
+        if (diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_CONFIRMED
+                || diagnosis == DiagnosticEngine.Diagnosis.LOCKUP_PROBABLE) {
+            return "STILL_STUCK";
+        }
+        return "UNVERIFIED";
+    }
+
+    private String formatDuration(long durationMs) {
+        if (durationMs <= 0L) return getString(R.string.duration_unknown);
+        return getString(R.string.duration_seconds, durationMs / 1000f);
+    }
+
+    private void hideRecoveryResult() {
+        if (recoveryResultBadge == null) return;
+        recoveryResultBadge.animate().cancel();
+        recoveryResultBadge.setVisibility(View.GONE);
+        recoveryResultBadge.setAlpha(1f);
+        recoveryResultBadge.setTranslationY(0f);
+    }
+
+    private void applyRecoveryResultVisual() {
+        if (recoveryResultBadge == null) return;
+        if (lastRecoveryOutcome == RecoveryOutcome.NONE) {
+            hideRecoveryResult();
+            return;
+        }
+
+        int tone;
+        int textRes;
+        switch (lastRecoveryOutcome) {
+            case RECOVERED:
+                tone = toneOk;
+                textRes = R.string.recovery_result_success;
+                break;
+            case STILL_STUCK:
+                tone = toneError;
+                textRes = R.string.recovery_result_failed;
+                break;
+            default:
+                tone = toneWarning;
+                textRes = R.string.recovery_result_unverified;
+                break;
+        }
+
+        recoveryResultBadge.setText(getString(textRes, formatDuration(lastRecoveryDurationMs)));
+        recoveryResultBadge.setTextColor(tone);
+        recoveryResultBadge.setBackground(roundRectStroke(
+                blendColors(colorCard, tone, isLightTheme ? 0.08f : 0.11f),
+                blendColors(colorOutline, tone, 0.45f), 999, 1));
+        recoveryResultBadge.setAlpha(0f);
+        recoveryResultBadge.setTranslationY(dp(5));
+        recoveryResultBadge.setVisibility(View.VISIBLE);
+        recoveryResultBadge.animate().alpha(1f).translationY(0f).setDuration(260)
+                .setInterpolator(new PathInterpolator(0.18f, 0f, 0.08f, 1f)).start();
     }
 
     private void openMoreApps() {
@@ -710,6 +937,7 @@ public class MainActivity extends Activity {
         buildUi();
         if (lastSnapshot != null) {
             showDiagnosis(lastSnapshot, false);
+            applyRecoveryResultVisual();
         } else if (lastDeviceInfo != null) {
             showProbe(lastDeviceInfo);
         }
@@ -1001,7 +1229,7 @@ public class MainActivity extends Activity {
     private Button toolButton(String value, int iconRes) {
         Button button = button(value, Color.TRANSPARENT, colorTextPrimary);
         button.setTextSize(12);
-        button.setMinHeight(dp(58));
+        button.setMinHeight(dp(40));
         button.setPadding(dp(5), 0, dp(5), 0);
         button.setBackground(roundRectStroke(
                 blendColors(colorCard, colorAccent, isLightTheme ? 0.02f : 0.035f),

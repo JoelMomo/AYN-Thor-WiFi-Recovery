@@ -22,7 +22,7 @@ The app deliberately fails closed on unvalidated firmware.
 
 ## Android app
 
-Current development build on `main`: **0.3.0-beta16**
+Current development build on `main`: **0.3.0-beta17**
 
 Latest signed public prerelease: **0.3.0-beta16**
 
@@ -36,7 +36,11 @@ The app:
 - uses low-level radio evidence only when needed;
 - chooses between a framework-only recovery and a deeper Wi-Fi stack + framework recovery;
 - verifies the scanner after Android returns and can escalate once if the light recovery did not clear the lockup;
-- copies a sanitized local support report;
+- copies a full sanitized technical report with app/device/diagnostic state and recent local history;
+- keeps a local history of the latest 10 checks/recoveries without network identifiers;
+- can open a prefilled GitHub problem report in the system browser without adding Internet permission;
+- shows a clear post-recovery result with outcome and elapsed time;
+- includes an **About / Technical info** page with version, validated firmware, recovery strategy and privacy details;
 - requests **no Internet permission** and contains **no telemetry**;
 - does not read or store Wi-Fi passwords.
 
@@ -85,7 +89,7 @@ The UI follows Android's system language or Android 13's per-app language settin
 
 Spanish uses the generic `es` resource set, so Android variants such as `es-419` also remain in Spanish rather than falling back to English. The current wording is the same Spanish translation used for Spain.
 
-All twelve translations are checked against the same translatable resource set. CI rejects missing/extra localized resources, and the current development build is visually validated on the physical Thor in **dark and light themes** for every included language.
+All twelve translations are checked against the same translatable resource set, and CI rejects missing/extra localized resources plus reversible UTF-8 mojibake. The beta16 UI baseline was physically validated on the Thor in **dark and light themes** for every included language; beta17 keeps the same localized-resource parity checks for its new UI.
 
 ## Installation
 
@@ -94,7 +98,7 @@ All twelve translations are checked against the same translatable resource set. 
 3. When the Wi-Fi network list is empty, tap **Check Wi-Fi**.
 4. **Recover Wi-Fi** is enabled only when the app has enough evidence to permit the validated recovery path.
 5. Save any open game/app before starting recovery.
-6. Use **Copy report** if you need to share a sanitized diagnostic result.
+6. Use **Full report** to copy the sanitized technical report, **History** for the latest local checks/recoveries, or **Report problem** to open a prefilled GitHub issue.
 
 If you previously installed one of the old debug APKs, uninstall it once before installing the signed release because the signing key is different.
 
@@ -169,7 +173,7 @@ GitHub Actions runs on pushes to `main` and pull requests. CI uses JDK 17 and ru
 - source checks against obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
 - debug APK and lint-report artifact upload.
 
-Public release APKs are signed locally with a dedicated release key. The private signing key is not stored in GitHub.
+A separate **Signed release** workflow can build, verify, hash and publish tagged releases automatically. It requires the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the signing material is never committed to the repository. Tagged prereleases are marked automatically when the version contains a suffix such as `-beta17`.
 
 For implementation details, validation evidence and known limitations, see [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
 

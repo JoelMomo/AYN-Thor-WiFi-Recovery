@@ -79,4 +79,43 @@
     <string name="more_apps">More apps by JoelMomo</string>
     <string name="more_apps_unavailable">No browser is available</string>
     <string name="more_apps_url" translatable="false">https://joelmomo.github.io/</string>
+
+    <string name="copy_full_report_short">Full report</string>
+    <string name="full_report_copied">Full technical report copied</string>
+    <string name="history_short">History</string>
+    <string name="report_problem_short">Report problem</string>
+    <string name="about_technical">About / Technical info</string>
+    <string name="history_title">Local history</string>
+    <string name="history_empty">No checks or recoveries have been saved yet.</string>
+    <string name="close">Close</string>
+    <string name="clear_history">Clear history</string>
+    <string name="history_cleared">History cleared</string>
+    <string name="history_recovery">Recovery</string>
+    <string name="history_check">Check</string>
+    <string name="history_deep_recovery">Wi-Fi stack + framework</string>
+    <string name="history_framework_recovery">Framework restart</string>
+    <string name="report_problem_title">Report a problem</string>
+    <string name="report_problem_body">GitHub will open in your browser with the anonymized technical report prefilled. Nothing is submitted until you send the issue.</string>
+    <string name="continue_label">Continue</string>
+    <string name="duration_unknown">time unknown</string>
+    <string name="duration_seconds">%1$.1f s</string>
+    <string name="recovery_result_success">✓ Recovered · %1$s</string>
+    <string name="recovery_result_failed">! Still stuck · %1$s</string>
+    <string name="recovery_result_unverified">Could not verify · %1$s</string>
+    <string name="about_title">About / Technical info</string>
+    <string name="about_subtitle">Version, recovery strategy and privacy details</string>
+    <string name="about_section_technical">Technical</string>
+    <string name="about_section_privacy">Privacy</string>
+    <string name="about_section_project">Project</string>
+    <string name="about_app_version">App version</string>
+    <string name="about_current_build">Android build</string>
+    <string name="about_validated_firmware">Validated firmware</string>
+    <string name="about_recovery_strategy">The normal path restarts Android’s framework. If the validated lockup has no low-level Wi-Fi evidence, the deep path restarts the Wi-Fi HAL, wificond and wpa_supplicant, toggles Wi-Fi, then restarts the framework. PCI/driver reset is not used.</string>
+    <string name="about_privacy_detail">No telemetry and no Internet permission. Diagnostic reports exclude network names, hardware addresses, IP addresses, serial numbers and passwords. History stays on this device and stores only timestamps, outcomes and recovery method.</string>
+    <string name="about_project_detail">Open-source community workaround for the AYN Thor .377 Wi-Fi scan lockup. It is not a firmware fix and recovery is not guaranteed.</string>
+    <string name="about_open_github">Open project on GitHub</string>
+    <string name="issue_title_template" translatable="false">Wi-Fi Recovery issue: %1$s</string>
+    <string name="issue_body_intro" translatable="false">Please describe what happened above the technical report.</string>
+    <string name="issue_url" translatable="false">https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/issues/new</string>
+    <string name="project_url" translatable="false">https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery</string>
 </resources>
