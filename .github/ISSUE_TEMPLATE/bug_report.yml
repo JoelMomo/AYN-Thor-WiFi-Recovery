@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible problem with Thor Wi-Fi Recovery.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. Please avoid including Wi-Fi passwords, private network details, or other sensitive data.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: e.g. 0.3.0-beta15
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: AYN Thor firmware
+      placeholder: e.g. Thor_V1.0.0.377_20260206_165408_user
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: e.g. Android 13
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do before the problem appeared?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Sanitized report or relevant logs
+      description: Paste only data you are comfortable sharing publicly.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
