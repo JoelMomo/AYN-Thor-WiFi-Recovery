@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
     private TextView detailCarrier;
     private TextView detailAps;
     private Button diagnoseButton;
-    private TextView recoverButton;
+    private RecoveryActionView recoverButton;
     private Button reportButton;
     private Button projectButton;
     private DiagnosticEngine.Snapshot lastSnapshot;
@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private int colorTextPrimary, colorTextSecondary, colorTextMuted, colorButtonText;
     private int colorChipValidated, colorChipNeutral, colorDetailText;
     private int toneOk, toneRecovery, toneWarning, toneError, toneNeutral;
+    private android.graphics.Typeface uiRegular, uiBold;
     private int currentStatusColor, currentStatusFill;
     private ValueAnimator statusAnimator;
     private ValueAnimator ambientAnimator;
@@ -785,8 +786,8 @@ public class MainActivity extends Activity {
     private TextView infoButton(String description) {
         TextView v = iconButton("i", description);
         v.setTypeface(uiTypeface(true));
-        int fill = blendColors(colorCard, colorAccent, isLightTheme ? 0.075f : 0.10f);
-        int stroke = blendColors(colorOutline, colorAccent, isLightTheme ? 0.18f : 0.24f);
+        int fill = blendColors(colorCard, colorAccent, isLightTheme ? 0.115f : 0.085f);
+        int stroke = blendColors(colorOutline, colorAccent, isLightTheme ? 0.24f : 0.20f);
         v.setBackground(roundRectStroke(fill, stroke, 999, 1));
         return v;
     }
@@ -870,35 +871,76 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
-    private TextView recoveryActionButton(String value) {
-        TextView button = text(value, 16, Color.WHITE, true);
-        button.setGravity(Gravity.CENTER);
-        button.setSingleLine(true);
-        button.setMinHeight(dp(58));
-        button.setPadding(dp(18), 0, dp(18), 0);
-        button.setBackground(recoveryActionBackground());
-        button.setCompoundDrawablesWithIntrinsicBounds(
-                R.drawable.ic_recovery_action, 0, 0, 0);
-        button.setCompoundDrawablePadding(dp(10));
-        button.setHapticFeedbackEnabled(true);
-        button.setSoundEffectsEnabled(true);
-        return button;
+    private RecoveryActionView recoveryActionButton(String value) {
+        return new RecoveryActionView(value);
     }
 
     private GradientDrawable recoveryActionBackground() {
         int start = isLightTheme
-                ? Color.rgb(22, 132, 118)
-                : Color.rgb(24, 108, 98);
+                ? Color.rgb(29, 145, 129)
+                : Color.rgb(19, 91, 84);
         int end = isLightTheme
-                ? Color.rgb(10, 92, 83)
-                : Color.rgb(11, 70, 65);
+                ? Color.rgb(14, 102, 93)
+                : Color.rgb(8, 54, 52);
         GradientDrawable drawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{start, end});
-        drawable.setCornerRadius(dp(17));
+        drawable.setCornerRadius(dp(18));
         drawable.setStroke(dp(1), blendColors(
-                colorAccent, Color.WHITE, isLightTheme ? 0.06f : 0.10f));
+                colorAccent, Color.WHITE, isLightTheme ? 0.18f : 0.10f));
         return drawable;
+    }
+
+    private final class RecoveryActionView extends LinearLayout {
+        private final TextView label;
+
+        RecoveryActionView(String value) {
+            super(MainActivity.this);
+            setOrientation(HORIZONTAL);
+            setGravity(Gravity.CENTER_VERTICAL);
+            setPadding(dp(10), dp(8), dp(14), dp(8));
+            setMinimumHeight(dp(64));
+            setBackground(recoveryActionBackground());
+            setClickable(true);
+            setFocusable(true);
+            setHapticFeedbackEnabled(true);
+            setSoundEffectsEnabled(true);
+
+            FrameLayout iconBadge = new FrameLayout(MainActivity.this);
+            int badgeFill = isLightTheme
+                    ? Color.argb(36, 255, 255, 255)
+                    : Color.argb(28, 255, 255, 255);
+            iconBadge.setBackground(roundRectStroke(
+                    badgeFill, Color.argb(46, 255, 255, 255), 13, 1));
+            ImageView icon = new ImageView(MainActivity.this);
+            icon.setImageResource(R.drawable.ic_recovery_action);
+            FrameLayout.LayoutParams iconParams =
+                    new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER);
+            iconBadge.addView(icon, iconParams);
+            addView(iconBadge, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+            label = text(value, 16, Color.WHITE, true);
+            label.setSingleLine(true);
+            label.setLetterSpacing(0.015f);
+            label.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams labelParams =
+                    new LinearLayout.LayoutParams(0, -1, 1f);
+            labelParams.setMargins(dp(13), 0, dp(10), 0);
+            addView(label, labelParams);
+
+            TextView arrow = text("›", 23,
+                    Color.argb(isLightTheme ? 210 : 190, 255, 255, 255), true);
+            arrow.setGravity(Gravity.CENTER);
+            addView(arrow, new LinearLayout.LayoutParams(dp(24), -1));
+        }
+
+        void setText(int resId) {
+            label.setText(resId);
+        }
+
+        void setText(CharSequence value) {
+            label.setText(value);
+        }
     }
 
     private Button toolButton(String value, int iconRes) {
@@ -1260,9 +1302,15 @@ public class MainActivity extends Activity {
     }
 
     private android.graphics.Typeface uiTypeface(boolean bold) {
-        return android.graphics.Typeface.create(
-                "sans-serif-rounded",
-                bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        if (uiRegular == null || uiBold == null) {
+            android.graphics.Typeface base =
+                    getResources().getFont(R.font.nunito_variable);
+            uiRegular = android.graphics.Typeface.create(
+                    base, android.graphics.Typeface.NORMAL);
+            uiBold = android.graphics.Typeface.create(
+                    base, android.graphics.Typeface.BOLD);
+        }
+        return bold ? uiBold : uiRegular;
     }
 
     private TextView text(String value, int sp, int color, boolean bold) {

@@ -1,5 +1,9 @@
 # Third-party notices
 
+## Nunito
+
+The UI uses **Nunito**, distributed by Google Fonts under the SIL Open Font License 1.1. The bundled license is included at `app/src/main/assets/licenses/nunito_ofl.txt`.
+
 ## parthi1994/ayn-thor-wifi-recovery
 
 The Android app's AYN `PServerBinder` invocation pattern was informed by the public implementation in:

@@ -15,7 +15,7 @@ This is **not an official AYN fix** and it does not modify the firmware.
 
 ## Android app (beta)
 
-The repository also contains an Android app in `app/`. Current development beta: `0.3.0-beta13` (latest public prerelease: `0.3.0-beta11`).
+The repository also contains an Android app in `app/`. Current development beta: `0.3.0-beta14` (latest public prerelease: `0.3.0-beta11`).
 
 - UI language follows Android's system/app language; English, Spanish, German, French, Italian and Simplified Chinese are included.
 - Android 13 exposes these translations through the system per-app language selector.
