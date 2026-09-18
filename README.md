@@ -24,7 +24,7 @@ The app deliberately fails closed on unvalidated firmware.
 
 Current development build on `main`: **0.3.0-beta15**
 
-Latest signed public prerelease: **0.3.0-beta11**
+Latest signed public prerelease: **0.3.0-beta15**
 
 [Download the latest signed prerelease](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases)
 
