@@ -78,5 +78,5 @@
     <string name="more_apps_label" translatable="false">+ apps</string>
     <string name="more_apps">More apps by JoelMomo</string>
     <string name="more_apps_unavailable">No browser is available</string>
-    <string name="more_apps_url" translatable="false">https://github.com/JoelMomo?tab=repositories</string>
+    <string name="more_apps_url" translatable="false">https://joelmomo.github.io/</string>
 </resources>
