@@ -257,7 +257,7 @@ public class MainActivity extends Activity {
         toolsCard.addView(sectionLabel(getString(R.string.section_tools)));
         LinearLayout toolRow = new LinearLayout(this);
         toolRow.setGravity(Gravity.CENTER_VERTICAL);
-        toolRow.setPadding(0, dp(6), 0, 0);
+        toolRow.setPadding(0, dp(9), 0, 0);
         diagnoseButton = toolButton(getString(R.string.diagnose), R.drawable.ic_tool_scan);
         reportButton = toolButton(getString(R.string.copy_full_report_short), R.drawable.ic_tool_report);
         reportButton.setEnabled(false);
@@ -265,24 +265,19 @@ public class MainActivity extends Activity {
         diagnoseButton.setOnClickListener(v -> { interactionFeedback(v); runProbe(true, false); });
         reportButton.setOnClickListener(v -> { interactionFeedback(v); copyDiagnosticReport(); });
         detailsToggle.setOnClickListener(v -> { interactionFeedback(v); toggleDetails(); });
-        toolRow.addView(diagnoseButton, weightedButton(0, dp(5)));
-        toolRow.addView(reportButton, weightedButton(dp(5), dp(5)));
-        toolRow.addView(detailsToggle, weightedButton(dp(5), 0));
-
-        LinearLayout secondaryToolRow = new LinearLayout(this);
-        secondaryToolRow.setGravity(Gravity.CENTER_VERTICAL);
-        secondaryToolRow.setPadding(0, dp(5), 0, 0);
         historyButton = toolButton(getString(R.string.history_short), R.drawable.ic_tool_history);
         problemButton = toolButton(getString(R.string.report_problem_short), R.drawable.ic_tool_issue);
         historyButton.setOnClickListener(v -> { interactionFeedback(v); showHistory(); });
         problemButton.setOnClickListener(v -> { interactionFeedback(v); reportProblem(); });
-        secondaryToolRow.addView(historyButton, weightedButton(0, dp(5)));
-        secondaryToolRow.addView(problemButton, weightedButton(dp(5), 0));
 
-        LinearLayout toolRows = column();
-        toolRows.addView(toolRow, new LinearLayout.LayoutParams(-1, -2));
-        toolRows.addView(secondaryToolRow, new LinearLayout.LayoutParams(-1, -2));
-        toolsCard.addView(toolRows, new LinearLayout.LayoutParams(-1, 0, 1f));
+        // Keep all tools on one landscape row. A second 58 dp row is clipped on
+        // the Thor's 1920x1080 layout because the lower dashboard card is compact.
+        toolRow.addView(diagnoseButton, weightedButton(0, dp(3)));
+        toolRow.addView(reportButton, weightedButton(dp(3), dp(3)));
+        toolRow.addView(detailsToggle, weightedButton(dp(3), dp(3)));
+        toolRow.addView(historyButton, weightedButton(dp(3), dp(3)));
+        toolRow.addView(problemButton, weightedButton(dp(3), 0));
+        toolsCard.addView(toolRow, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         LinearLayout deviceCard = column();
         deviceCard.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -694,7 +689,7 @@ public class MainActivity extends Activity {
         reportButton.setAlpha(reportButton.isEnabled() ? 1f : 0.55f);
         historyButton.setEnabled(!busy);
         historyButton.setAlpha(busy ? 0.55f : 1f);
-        problemButton.setEnabled(!busy && lastSnapshot != null);
+        problemButton.setEnabled(!busy);
         problemButton.setAlpha(problemButton.isEnabled() ? 1f : 0.55f);
         themeToggle.setEnabled(!busy);
         themeToggle.setAlpha(busy ? 0.55f : 1f);
@@ -797,7 +792,13 @@ public class MainActivity extends Activity {
 
     private void reportProblem() {
         if (lastSnapshot == null) {
-            Toast.makeText(this, R.string.report_unavailable, Toast.LENGTH_SHORT).show();
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.report_problem_title)
+                    .setMessage(R.string.report_unavailable)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.diagnose,
+                            (dialog, which) -> runProbe(true, false))
+                    .show();
             return;
         }
         new AlertDialog.Builder(this)
@@ -809,15 +810,21 @@ public class MainActivity extends Activity {
     }
 
     private void openProblemReport() {
+        String report = buildFullTechnicalReport();
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(
+                ClipData.newPlainText("Thor Wi-Fi technical report", report));
+
         String title = getString(R.string.issue_title_template, lastSnapshot.diagnosis().name());
-        String body = getString(R.string.issue_body_intro) + "\n\n---\n\n"
-                + buildFullTechnicalReport();
+        String body = getString(R.string.issue_body_intro) + "\n\n---\n\n" + report;
         Uri uri = Uri.parse(getString(R.string.issue_url)).buildUpon()
                 .appendQueryParameter("title", title)
                 .appendQueryParameter("body", body)
                 .build();
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            Toast.makeText(this, R.string.full_report_copied, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, R.string.more_apps_unavailable, Toast.LENGTH_SHORT).show();
         }
@@ -1229,7 +1236,7 @@ public class MainActivity extends Activity {
     private Button toolButton(String value, int iconRes) {
         Button button = button(value, Color.TRANSPARENT, colorTextPrimary);
         button.setTextSize(12);
-        button.setMinHeight(dp(40));
+        button.setMinHeight(dp(58));
         button.setPadding(dp(5), 0, dp(5), 0);
         button.setBackground(roundRectStroke(
                 blendColors(colorCard, colorAccent, isLightTheme ? 0.02f : 0.035f),

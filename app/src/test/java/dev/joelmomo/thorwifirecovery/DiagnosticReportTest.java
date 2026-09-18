@@ -28,6 +28,11 @@ public class DiagnosticReportTest {
         assertFalse(report.contains("Thor-5G"));
         assertFalse(report.contains("aa:bb:cc:dd:ee:ff"));
         assertFalse(report.contains("192.168.1.14"));
+        assertFalse(report.contains("SSID:"));
+        assertFalse(report.contains("BSSID:"));
+        assertFalse(report.contains("IP address:"));
+        assertFalse(report.contains("Serial:"));
+        assertFalse(report.contains("Password:"));
     }
 
     @Test public void reportNormalizesSingleLineFields() {
