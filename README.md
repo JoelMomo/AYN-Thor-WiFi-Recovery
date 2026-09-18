@@ -57,6 +57,27 @@ After recovery, the app waits for Android to settle, checks the scanner again, r
 
 The original manual fallback remains available as `Thor_WiFi_Recovery.sh`.
 
+## Recovery flow on a physical Thor
+
+For documentation, the scanner fault below was deliberately reproduced on the physical AYN Thor running the validated `.377` firmware by holding the Wi-Fi scanner in a persistent `ScanningState`. This triggers the same diagnosis and recovery path the app uses when the intermittent firmware lockup occurs naturally.
+
+<p align="center">
+  <img src="docs/images/recovery-01-lockup-detected.png" alt="Thor Wi-Fi Recovery detecting a persistent Wi-Fi scanner lockup" width="49%">
+  <img src="docs/images/recovery-02-confirmation.png" alt="Recovery confirmation before restarting Android's framework" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/images/recovery-03-verifying.png" alt="Thor Wi-Fi Recovery verifying the Wi-Fi scanner after recovery" width="49%">
+  <img src="docs/images/recovery-04-result.png" alt="Successful Wi-Fi recovery result on the physical AYN Thor" width="49%">
+</p>
+
+1. **Detect** - `Check Wi-Fi` sees that the scanner remains in `ScanningState` instead of returning to `IdleState`, and enables recovery.
+2. **Confirm** - `Recover Wi-Fi` warns that running apps will close because Android's framework is about to restart.
+3. **Recover and verify** - after the restart, the pending recovery state is preserved. When the activity is recreated, the app waits for Android and Wi-Fi to settle and checks the scanner again.
+4. **Result** - if the scanner returns to `IdleState`, the app reports **Wi-Fi recovered**. If the lighter framework restart does not clear the lockup, beta17 can escalate to the deeper Wi-Fi stack recovery automatically.
+
+The elapsed time shown in the result is measured on-device and can vary with Android restart and reconnection time.
+
 ## Screenshots
 
 <p align="center">
