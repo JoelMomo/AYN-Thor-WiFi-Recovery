@@ -194,7 +194,7 @@ GitHub Actions runs on pushes to `main` and pull requests. CI uses JDK 17 and ru
 - source checks against obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
 - debug APK and lint-report artifact upload.
 
-A separate **Signed release** workflow can build, verify, hash and publish tagged releases automatically. It requires the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the signing material is never committed to the repository. Tagged prereleases are marked automatically when the version contains a suffix such as `-beta17`.
+A separate **Signed release** workflow can build, verify and hash signed APKs. Manual workflow runs produce a SHA-suffixed **snapshot artifact** and never publish a GitHub Release; pushing a matching `v*` tag publishes the signed APK and checksum automatically. It requires the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the signing material is never committed to the repository. Tagged prereleases are marked automatically when the version contains a suffix such as `-beta17`.
 
 For implementation details, validation evidence and known limitations, see [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
 
