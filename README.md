@@ -22,9 +22,9 @@ The app deliberately fails closed on unvalidated firmware.
 
 ## Android app
 
-Current development build on `main`: **0.3.0-beta17**
+Current app version on `main`: **0.3.0-beta17** (with post-release maintenance commits)
 
-Latest signed public prerelease: **0.3.0-beta16**
+Latest signed public prerelease: **0.3.0-beta17**
 
 [Download the latest signed prerelease](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases)
 
@@ -110,7 +110,7 @@ The UI follows Android's system language or Android 13's per-app language settin
 
 Spanish uses the generic `es` resource set, so Android variants such as `es-419` also remain in Spanish rather than falling back to English. The current wording is the same Spanish translation used for Spain.
 
-All twelve translations are checked against the same translatable resource set, and CI rejects missing/extra localized resources plus reversible UTF-8 mojibake. The beta16 UI baseline was physically validated on the Thor in **dark and light themes** for every included language; beta17 keeps the same localized-resource parity checks for its new UI.
+All twelve translations are checked against the same translatable resource set, and CI rejects missing/extra localized resources plus reversible UTF-8 mojibake. The beta17 tool layout was physically validated on the Thor across **all twelve locales**, including real line-break checks for every localized tool label so words are not split or ellipsized. The English dark/light documentation screenshots were also refreshed from the physical device.
 
 ## Installation
 
