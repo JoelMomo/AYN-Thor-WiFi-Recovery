@@ -17,37 +17,37 @@ if (signingPropertiesFile.exists()) {
 }
 
 android {
-    namespace 'dev.joelmomo.thorwifirecovery'
-    compileSdk 36
+    namespace = 'dev.joelmomo.thorwifirecovery'
+    compileSdk = 36
 
     buildFeatures {
-        buildConfig true
+        buildConfig = true
     }
 
     defaultConfig {
-        applicationId 'dev.joelmomo.thorwifirecovery'
-        minSdk 26
-        targetSdk 33
-        versionCode 316
-        versionName '0.3.0-beta17'
+        applicationId = 'dev.joelmomo.thorwifirecovery'
+        minSdk = 26
+        targetSdk = 33
+        versionCode = 316
+        versionName = '0.3.0-beta17'
     }
     signingConfigs {
         release { cfg ->
             if (releaseStoreFile != null) {
-                cfg.storeFile file(releaseStoreFile)
-                cfg.storePassword releaseStorePassword
-                cfg.keyAlias releaseKeyAlias
-                cfg.keyPassword releaseKeyPassword
+                cfg.storeFile = file(releaseStoreFile)
+                cfg.storePassword = releaseStorePassword
+                cfg.keyAlias = releaseKeyAlias
+                cfg.keyPassword = releaseKeyPassword
             }
         }
     }
 
     buildTypes {
         release { bt ->
-            bt.minifyEnabled false
-            bt.shrinkResources false
+            bt.minifyEnabled = false
+            bt.shrinkResources = false
             if (releaseStoreFile != null) {
-                bt.signingConfig signingConfigs.release
+                bt.signingConfig = signingConfigs.release
             }
         }
     }

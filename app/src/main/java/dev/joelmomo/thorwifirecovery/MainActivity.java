@@ -107,11 +107,7 @@ public class MainActivity extends Activity {
         applyPalette();
         View decor = getWindow().getDecorView();
         decor.setAlpha(1f);
-        getWindow().setStatusBarColor(colorBg);
-        getWindow().setNavigationBarColor(colorBg);
-        getWindow().getDecorView().setSystemUiVisibility(isLightTheme
-                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-                : 0);
+        SystemBars.apply(getWindow(), colorBg, isLightTheme);
         buildUi();
         startAmbientAnimation();
         boolean pending = prefs().getBoolean(KEY_RECOVERY_PENDING, false);
@@ -926,7 +922,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        final int oldBar = getWindow().getStatusBarColor();
+        final int oldBar = colorBg;
         final Bitmap overlayBitmap = oldFrame;
         final ImageView overlay;
         if (overlayBitmap != null) {
@@ -957,9 +953,7 @@ public class MainActivity extends Activity {
         suppressStatusAnimation = false;
         startAmbientAnimation();
 
-        getWindow().getDecorView().setSystemUiVisibility(isLightTheme
-                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-                : 0);
+        SystemBars.setLightAppearance(getWindow(), isLightTheme);
         animateSystemBars(oldBar, colorBg);
 
         if (overlay == null) return;
@@ -978,8 +972,7 @@ public class MainActivity extends Activity {
         bars.setInterpolator(new PathInterpolator(0.16f, 0f, 0.08f, 1f));
         bars.addUpdateListener(animation -> {
             int color = (int) animation.getAnimatedValue();
-            getWindow().setStatusBarColor(color);
-            getWindow().setNavigationBarColor(color);
+            SystemBars.setColors(getWindow(), color);
         });
         bars.start();
     }
@@ -1562,6 +1555,7 @@ public class MainActivity extends Activity {
             strokePaint.setColorFilter(colorFilter);
         }
 
+        @SuppressWarnings("deprecation")
         @Override public int getOpacity() {
             return android.graphics.PixelFormat.TRANSLUCENT;
         }
