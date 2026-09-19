@@ -1,9 +1,31 @@
-# Security
+# Security policy
 
-If you believe you have found a security or privacy vulnerability, please avoid posting exploit details, credentials, private logs, conversation content, network secrets, or other sensitive information in a public issue.
+## Supported version
 
-Use GitHub's **Report a vulnerability** / private security reporting option for this repository when it is available.
+Security fixes are applied to the current development line. The latest signed public prerelease is **v0.3.0-beta17**.
 
-If private reporting is not available, open a minimal public issue titled **[Security contact]** without vulnerability details so a private channel can be arranged.
+## Reporting a vulnerability
 
-For ordinary bugs that do not involve a security or privacy risk, use the repository's Bug report form.
+Please do **not** open a public issue for a security vulnerability or include secrets, Wi-Fi credentials, private network identifiers, signing material, device serial numbers, or other sensitive data in a public report.
+
+Use GitHub's private vulnerability reporting for this repository:
+
+**Security → Report a vulnerability**
+
+https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/security/advisories/new
+
+Include the minimum information needed to reproduce the issue, such as the affected app version, Thor firmware version, Android version, reproduction steps, and impact.
+
+For ordinary bugs that do not involve a security or privacy issue, use the public bug-report form instead.
+
+## Security model
+
+Thor Wi-Fi Recovery is intentionally narrow in scope:
+
+- it does not request `android.permission.INTERNET`;
+- diagnostic reports exclude SSIDs, BSSIDs, IP addresses, device serial numbers and passwords;
+- local history stores only anonymous check/recovery metadata;
+- recovery is gated to the validated AYN Thor firmware build;
+- release APKs are signed and published with a SHA-256 checksum.
+
+GitHub Actions also rejects unexpected Internet permission and obvious sensitive Wi-Fi logging patterns during CI.
