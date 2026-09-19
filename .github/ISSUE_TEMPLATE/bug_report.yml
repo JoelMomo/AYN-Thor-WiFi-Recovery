@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: App version
-      placeholder: e.g. 0.3.0-beta15
+      placeholder: e.g. 0.3.0-beta17
     validations:
       required: true
   - type: input

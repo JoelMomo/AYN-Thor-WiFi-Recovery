@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Security vulnerability
+    url: https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/security/advisories/new
+    about: Privately report a security or privacy vulnerability. Do not post sensitive details in a public issue.
   - name: JoelMomo apps & tools
     url: https://joelmomo.github.io/
     about: Browse the current projects, releases and project links.
