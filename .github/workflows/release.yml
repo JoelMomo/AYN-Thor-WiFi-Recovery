@@ -102,13 +102,22 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$APP_VERSION"
+          SHORT_SHA="${GITHUB_SHA::7}"
           LABEL="v$VERSION"
+          APK_NAME="Thor-WiFi-Recovery-${VERSION}.apk"
+          ARTIFACT_NAME="thor-wifi-recovery-${VERSION}"
+          SOURCE_NOTE="Built automatically from the tagged commit. The workflow verifies the release signature and confirms that the APK has no Internet permission."
+
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             LABEL="$GITHUB_REF_NAME"
+          else
+            LABEL="snapshot-${VERSION}-${SHORT_SHA}"
+            APK_NAME="Thor-WiFi-Recovery-${VERSION}-snapshot-${SHORT_SHA}.apk"
+            ARTIFACT_NAME="thor-wifi-recovery-${VERSION}-snapshot-${SHORT_SHA}"
+            SOURCE_NOTE="Signed snapshot built automatically from commit ${SHORT_SHA}. This workflow run is not a published GitHub Release."
           fi
 
           mkdir -p release-artifacts
-          APK_NAME="Thor-WiFi-Recovery-${VERSION}.apk"
           cp app/build/outputs/apk/release/app-release.apk "release-artifacts/$APK_NAME"
           (
             cd release-artifacts
@@ -135,17 +144,18 @@ jobs:
             cat "release-artifacts/$APK_NAME.sha256"
             printf '%s\n' '```'
             echo
-            echo "Built automatically from the tagged commit. The workflow verifies the release signature and confirms that the APK has no Internet permission."
+            echo "$SOURCE_NOTE"
           } > release-artifacts/RELEASE_NOTES.md
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "label=$LABEL" >> "$GITHUB_OUTPUT"
           echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload signed build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: thor-wifi-recovery-${{ steps.package.outputs.version }}
+          name: ${{ steps.package.outputs.artifact_name }}
           path: release-artifacts/
           if-no-files-found: error
 
