@@ -5,7 +5,11 @@
 Open-source Android recovery tool for the intermittent Wi-Fi scan lockup observed on the stock **AYN Thor** firmware `.377`.
 
 <p align="center">
-  <img src="docs/images/dashboard-dark.png" alt="Thor Wi-Fi Recovery dashboard in dark mode" width="100%">
+  <img src="docs/images/ready-to-check.gif" width="900" alt="Thor Wi-Fi Recovery ready to check Wi-Fi on the physical AYN Thor">
+</p>
+
+<p align="center">
+  <sub>Ready to check on the physical AYN Thor · English UI · system bars cropped.</sub>
 </p>
 
 > [!IMPORTANT]
@@ -44,6 +48,16 @@ The app:
 - requests **no Internet permission** and contains **no telemetry**;
 - does not read or store Wi-Fi passwords.
 
+### Light / dark mode
+
+<p align="center">
+  <img src="docs/images/theme-switch.gif" width="900" alt="Thor Wi-Fi Recovery switching between dark and light themes on the physical AYN Thor">
+</p>
+
+<p align="center">
+  <sub>Theme switching on the physical Thor. The pointer and click rings show the exact UI interaction.</sub>
+</p>
+
 ## How recovery works
 
 The affected `.377` unit was observed with `WifiSingleScanStateMachine` stuck in `ScanningState`.
@@ -60,6 +74,14 @@ The original manual fallback remains available as `Thor_WiFi_Recovery.sh`.
 ## Recovery flow on a physical Thor
 
 For documentation, the scanner fault below was deliberately reproduced on the physical AYN Thor running the validated `.377` firmware by holding the Wi-Fi scanner in a persistent `ScanningState`. This triggers the same diagnosis and recovery path the app uses when the intermittent firmware lockup occurs naturally.
+
+<p align="center">
+  <img src="docs/images/recovery-flow.gif" width="900" alt="Complete Thor Wi-Fi Recovery flow on the physical AYN Thor, from diagnosis through successful verification">
+</p>
+
+<p align="center">
+  <sub>Real recovery on the physical Thor. Restarting Android's framework necessarily stops Android's own screen recorder, so the GIF smoothly rejoins at the verification/result state; every state shown comes from the physical device.</sub>
+</p>
 
 <p align="center">
   <img src="docs/images/recovery-01-lockup-detected.png" alt="Thor Wi-Fi Recovery detecting a persistent Wi-Fi scanner lockup" width="49%">
