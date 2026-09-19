@@ -51,13 +51,26 @@ jobs:
           keyPassword=$ANDROID_KEY_PASSWORD
           EOF
 
-      - name: Verify tag matches app version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Read app version
+        id: app_version
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(sed -n "s/^[[:space:]]*versionName '\([^']*\)'.*/\1/p" app/build.gradle | head -n1)"
-          EXPECTED="v$VERSION"
+          VERSION="$(sed -nE "s/^[[:space:]]*versionName[[:space:]]*=?[[:space:]]*['\"]([^'\"]+)['\"].*/\1/p" app/build.gradle | head -n1)"
+          if [ -z "$VERSION" ]; then
+            echo "Unable to read versionName from app/build.gradle" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          EXPECTED="v$APP_VERSION"
           if [ "$GITHUB_REF_NAME" != "$EXPECTED" ]; then
             echo "Tag $GITHUB_REF_NAME does not match app version $EXPECTED" >&2
             exit 1
@@ -84,9 +97,11 @@ jobs:
       - name: Prepare release artifacts and changelog
         id: package
         shell: bash
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
           set -euo pipefail
-          VERSION="$(sed -n "s/^[[:space:]]*versionName '\([^']*\)'.*/\1/p" app/build.gradle | head -n1)"
+          VERSION="$APP_VERSION"
           LABEL="v$VERSION"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             LABEL="$GITHUB_REF_NAME"
