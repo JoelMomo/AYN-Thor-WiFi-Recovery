@@ -4,6 +4,8 @@ For reproducible bugs, use the repository's **Bug report** issue form. For ideas
 
 Please do not post passwords, private logs, account information, private ChatGPT content, or other sensitive data in public issues.
 
+For a security or privacy vulnerability, use the repository's **Security → Report a vulnerability** flow instead of opening a public issue. See [SECURITY.md](SECURITY.md).
+
 ## Project links
 
 - Browse all apps and tools: https://joelmomo.github.io/
