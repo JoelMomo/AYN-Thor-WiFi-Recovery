@@ -45,10 +45,7 @@ public class AboutActivity extends Activity {
             secondary = Color.rgb(170, 182, 188);
             accent = Color.rgb(119, 216, 199);
         }
-        getWindow().setStatusBarColor(bg);
-        getWindow().setNavigationBarColor(bg);
-        getWindow().getDecorView().setSystemUiVisibility(light
-                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0);
+        SystemBars.apply(getWindow(), bg, light);
         buildUi();
     }
 
