@@ -144,6 +144,28 @@ A lower PCI/driver reset was investigated on the physical Thor. Unbinding and re
 
 The physical Thor was used throughout this pass. The scanner was repeatedly driven into `ScanningState`, recovery availability was confirmed in the UI, and the device was returned to a healthy `IdleState` with scan results and a live carrier before final validation. This remains a firmware workaround rather than a guaranteed fix.
 
+## Beta17 reporting, release automation and UI validation
+
+`v0.3.0-beta17` adds support/reporting tools around the existing recovery path without broadening the firmware signature or introducing a lower-level reset.
+
+The app now keeps a local history of the latest ten checks and recoveries. Entries contain only time, result, recovery stage and duration; network names, hardware addresses, IP addresses, serial numbers and passwords are neither persisted nor included in the diagnostic report. **Full report** copies the sanitized technical report, while **Report problem** copies the same report and opens the repository issue page for the user to submit manually. The new **About / Technical info** page exposes the app version, Android/device/build information, validated firmware, recovery strategy and privacy constraints.
+
+Post-recovery feedback was also made more explicit. The UI records the recovery method and elapsed time and distinguishes recovered, still-stuck and unverified outcomes rather than reducing all attempts to a generic completion state.
+
+The landscape tool row was physically reworked after real-device testing showed that five translated actions could wrap individual words. Device details were moved to a compact disclosure chevron in the **DEVICE** card, leaving four primary actions in **TOOLS**. The final layout was exercised on the physical Thor in all twelve supported locales. The rendered line layout was inspected for every tool label; no locale produced a mid-word split or ellipsis after the final sizing pass. English dark/light screenshots and the documented recovery sequence were then recaptured from the device.
+
+For the recovery-flow documentation, the scanner fault was deliberately reproduced on the validated `.377` Thor by keeping the Wi-Fi scanner in persistent `ScanningState`. The production diagnosis path exposed **Recovery available**, the in-app confirmation was used, and the framework recovery returned the scanner to a healthy state with **Wi-Fi recovered** reported by the app.
+
+Beta17 also introduces a signed-release workflow. GitHub Actions restores the release key from repository secrets, runs tests/lint, builds the signed APK, verifies its signature, confirms the APK has no `android.permission.INTERNET`, generates a SHA-256 checksum and publishes tagged prereleases automatically. The published beta17 APK and checksum were downloaded again after publication; the checksum matched, the signing certificate matched the installed app, and the published APK upgraded the physical Thor successfully.
+
+## Post-beta17 repository maintenance
+
+After the beta17 tag, `main` received repository/tooling maintenance only; the published `v0.3.0-beta17` tag and release assets remain unchanged.
+
+GitHub Actions was migrated to `actions/setup-java@v5`, `actions/checkout@v7` and `actions/upload-artifact@v7`, removing the Node 20 and older action-runtime deprecation warnings. The Gradle Groovy DSL was converted to assignment syntax compatible with Gradle 10, and Android system-bar handling was centralized behind `WindowInsetsController` on API 30+ with the required legacy fallback for API 26-29. Local builds with Gradle `--warning-mode all` and an explicit Java `-Xlint:deprecation` pass no longer emit the previous deprecation warnings.
+
+The Gradle syntax cleanup exposed a release-workflow assumption: the version parser expected the older `versionName '...'` form. The workflow now reads the app version once through a guarded parser that accepts both legacy and assignment forms, reuses that value for tag validation and artifact naming, and fails early if no version can be read. Manual signed-release smoke runs on the maintenance branch and on `main` both completed successfully with the expected `thor-wifi-recovery-0.3.0-beta17` artifact name.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.
