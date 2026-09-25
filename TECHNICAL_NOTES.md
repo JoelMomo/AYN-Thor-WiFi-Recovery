@@ -166,6 +166,16 @@ GitHub Actions was migrated to `actions/setup-java@v5`, `actions/checkout@v7` an
 
 The Gradle syntax cleanup exposed a release-workflow assumption: the version parser expected the older `versionName '...'` form. The workflow now reads the app version once through a guarded parser that accepts both legacy and assignment forms, reuses that value for tag validation and artifact naming, and fails early if no version can be read. Manual signed-release runs are deliberately labeled as snapshots and include the short commit SHA in the artifact/APK name, for example `thor-wifi-recovery-0.3.0-beta17-snapshot-9073831`; tagged release asset names remain unchanged. Branch and `main` smoke runs completed successfully with the snapshot naming, checksum generation and signing verification intact.
 
+## Stable 0.3.0 closure
+
+The stable 0.3.0 line is a promotion of the physically validated beta17 behavior plus repository/tooling maintenance; it does not broaden the recovery signature, add new root commands or change the validated firmware.
+
+Physical beta17 validation already covered the supported `.377` Thor, the real scanner-lockup reproduction, in-app confirmation, framework recovery, post-recovery verification, recovery-result reporting, all twelve localized tool layouts, dark/light presentation and installation of the signed GitHub-built APK over the existing installation. The post-beta17 code changes on `main` were limited to system-bar compatibility cleanup and build/release infrastructure, with the system-bar presentation checked again on the physical Thor.
+
+Stable promotion therefore uses a new Android versionCode/versionName, documentation/support cleanup and a signed snapshot/release gate rather than repeating a different recovery experiment. Any future change to firmware gating, diagnosis, recovery commands, escalation or verification returns to the physical-device gate documented in [MAINTENANCE.md](MAINTENANCE.md).
+
+The project is intended to enter maintenance mode after the stable tag: new AYN firmware and real-world reports are classified first, reproduced with the least invasive environment possible, and only then turned into a small tested change. Unsupported firmware remains fail-closed until its exact build has passed physical validation.
+
 ## Limitations
 
 - This does not permanently fix the firmware bug.

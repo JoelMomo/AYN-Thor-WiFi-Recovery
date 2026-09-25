@@ -13,7 +13,7 @@ Open-source Android recovery tool for the intermittent Wi-Fi scan lockup observe
 </p>
 
 > [!IMPORTANT]
-> This is an experimental community workaround, not an official AYN fix. It does not modify the firmware, but recovery restarts Android services and closes running apps. Save your game first.
+> This is a community workaround, not an official AYN fix. It does not modify the firmware, but recovery restarts Android services and closes running apps. Save your game first.
 
 ## Validated configuration
 
@@ -26,11 +26,9 @@ The app deliberately fails closed on unvalidated firmware.
 
 ## Android app
 
-Current app version on `main`: **0.3.0-beta17** (with post-release maintenance commits)
+Current app version on `main`: **0.3.0**
 
-Latest signed public prerelease: **0.3.0-beta17**
-
-[Download the latest signed prerelease](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases)
+[Download the latest signed release](https://github.com/JoelMomo/AYN-Thor-WiFi-Recovery/releases)
 
 The app:
 
@@ -96,7 +94,7 @@ For documentation, the scanner fault below was deliberately reproduced on the ph
 1. **Detect** - `Check Wi-Fi` sees that the scanner remains in `ScanningState` instead of returning to `IdleState`, and enables recovery.
 2. **Confirm** - `Recover Wi-Fi` warns that running apps will close because Android's framework is about to restart.
 3. **Recover and verify** - after the restart, the pending recovery state is preserved. When the activity is recreated, the app waits for Android and Wi-Fi to settle and checks the scanner again.
-4. **Result** - if the scanner returns to `IdleState`, the app reports **Wi-Fi recovered**. If the lighter framework restart does not clear the lockup, beta17 can escalate to the deeper Wi-Fi stack recovery automatically.
+4. **Result** - if the scanner returns to `IdleState`, the app reports **Wi-Fi recovered**. If the lighter framework restart does not clear the lockup, the app can escalate to the deeper Wi-Fi stack recovery automatically.
 
 The elapsed time shown in the result is measured on-device and can vary with Android restart and reconnection time.
 
@@ -132,7 +130,7 @@ The UI follows Android's system language or Android 13's per-app language settin
 
 Spanish uses the generic `es` resource set, so Android variants such as `es-419` also remain in Spanish rather than falling back to English. The current wording is the same Spanish translation used for Spain.
 
-All twelve translations are checked against the same translatable resource set, and CI rejects missing/extra localized resources plus reversible UTF-8 mojibake. The beta17 tool layout was physically validated on the Thor across **all twelve locales**, including real line-break checks for every localized tool label so words are not split or ellipsized. The English dark/light documentation screenshots were also refreshed from the physical device.
+All twelve translations are checked against the same translatable resource set, and CI rejects missing/extra localized resources plus reversible UTF-8 mojibake. The 0.3.0 UI baseline was physically validated on the Thor across **all twelve locales**, including real line-break checks for every localized tool label so words are not split or ellipsized. The English dark/light documentation screenshots were also refreshed from the physical device.
 
 ## Installation
 
@@ -216,9 +214,11 @@ GitHub Actions runs on pushes to `main` and pull requests. CI uses JDK 17 and ru
 - source checks against obvious logging of SSIDs, BSSIDs, `WifiInfo` or passwords;
 - debug APK and lint-report artifact upload.
 
-A separate **Signed release** workflow can build, verify and hash signed APKs. Manual workflow runs produce a SHA-suffixed **snapshot artifact** and never publish a GitHub Release; pushing a matching `v*` tag publishes the signed APK and checksum automatically. It requires the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the signing material is never committed to the repository. Tagged prereleases are marked automatically when the version contains a suffix such as `-beta17`.
+A separate **Signed release** workflow can build, verify and hash signed APKs. Manual workflow runs produce a SHA-suffixed **snapshot artifact** and never publish a GitHub Release; pushing a matching `v*` tag publishes the signed APK and checksum automatically. It requires the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; the signing material is never committed to the repository. Tagged prereleases are marked automatically when the version contains a suffix such as `-beta17`; a tag such as `v0.3.0` is published as a normal stable release.
 
 For implementation details, validation evidence and known limitations, see [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md).
+
+For firmware updates, real-world issue triage, rollback and maintenance release gates, see [MAINTENANCE.md](MAINTENANCE.md).
 
 Third-party notices, including the Nunito font license and the upstream Binder-reference attribution, are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

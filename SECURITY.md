@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security fixes are applied to the current development line. The latest signed public prerelease is **v0.3.0-beta17**.
+Security fixes are applied to the current maintained line. Use the latest signed GitHub release when reporting or reproducing a security issue; fixes are developed on `main` before the next signed release.
 
 ## Reporting a vulnerability
 

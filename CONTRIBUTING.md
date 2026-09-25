@@ -44,6 +44,8 @@ The recovery path is deliberately conservative. Changes to firmware gating, diag
 
 Do not broaden the validated firmware signature or add a lower-level hardware reset solely to make another device/build pass.
 
+Firmware-validation, incident-triage, rollback and release gates are documented in [MAINTENANCE.md](MAINTENANCE.md).
+
 There is no guaranteed response time. These projects are maintained in spare time.
 
 ## Project links
