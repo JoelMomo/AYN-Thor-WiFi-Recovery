@@ -6,6 +6,8 @@ Please do not post passwords, private logs, account information, private ChatGPT
 
 For a security or privacy vulnerability, use the repository's **Security → Report a vulnerability** flow instead of opening a public issue. See [SECURITY.md](SECURITY.md).
 
+For reports involving a new AYN firmware or a recovery case that differs from the validated lockup, see [MAINTENANCE.md](MAINTENANCE.md) for the information needed to classify and validate the case.
+
 ## Project links
 
 - Browse all apps and tools: https://joelmomo.github.io/
