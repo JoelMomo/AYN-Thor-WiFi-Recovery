@@ -134,14 +134,18 @@ jobs:
           {
             echo "# $LABEL"
             echo
+            if [[ "$GITHUB_REF" == refs/tags/v* && "$VERSION" != *-* ]]; then
+              echo "Stable release for the exact firmware compatibility and recovery scope documented in the README."
+              echo
+            fi
             if [ -n "$PREVIOUS_TAG" ]; then
               echo "## Changes since $PREVIOUS_TAG"
               echo
-              git log --pretty='- %s (%h)' "$PREVIOUS_TAG..HEAD"
+              git log --no-merges --pretty='- %s (%h)' "$PREVIOUS_TAG..HEAD"
             else
               echo "## Changes"
               echo
-              git log --pretty='- %s (%h)' -n 20
+              git log --no-merges --pretty='- %s (%h)' -n 20
             fi
             echo
             echo "## APK"
